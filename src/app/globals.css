@@ -1,0 +1,83 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/fraunces/full.css';
+@import '@fontsource-variable/plus-jakarta-sans';
+
+/*
+ * Metis Campus design tokens. The palette comes from the public landing (cream, ink and gold).
+ * Gold is a brand color for fills and the signature offset shadow; for gold text use gold-ink,
+ * which keeps a 4.5:1 contrast on cream and paper.
+ */
+@theme {
+  --color-cream: #f7f0e3;
+  --color-cream-deep: #efe5d2;
+  --color-paper: #fffcf5;
+  --color-ink: #221b10;
+  --color-ink-soft: #6b5d48;
+  --color-gold: #c2933c;
+  --color-gold-soft: #e9d9ae;
+  --color-gold-ink: #85601f;
+  --color-line: #dfd2b8;
+  --color-danger: #a63a2f;
+  --color-danger-soft: #f6e1dc;
+  --color-success: #3f7a52;
+
+  --font-sans: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Fraunces Variable', Georgia, serif;
+
+  --radius-control: 0.75rem;
+  --radius-surface: 1.25rem;
+
+  --shadow-offset: 4px 4px 0 var(--color-gold);
+  --shadow-offset-sm: 3px 3px 0 var(--color-gold);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-cream font-sans text-[0.9375rem] leading-relaxed text-ink antialiased;
+    font-feature-settings: 'ss01';
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply text-balance;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-ink;
+  }
+
+  ::selection {
+    @apply bg-gold-soft text-ink;
+  }
+}
+
+/* Fraunces display: a soft, slightly wonky optical style that echoes the landing headline. */
+@utility font-display {
+  font-family: var(--font-serif);
+  font-variation-settings:
+    'SOFT' 50,
+    'WONK' 1;
+  letter-spacing: -0.015em;
+}
+
+/* Dot grid from the landing hero, used once per screen as a quiet backdrop. */
+@utility bg-dots {
+  background-image: radial-gradient(var(--color-line) 1.2px, transparent 1.2px);
+  background-size: 26px 26px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
