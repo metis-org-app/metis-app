@@ -1,6 +1,8 @@
 import 'server-only';
+import { headers } from 'next/headers';
 import type { z } from 'zod';
 import { env } from '@/lib/env';
+import { forwardedClientIp } from './client-ip';
 import { parseProblem, type Problem } from './problem';
 
 export class ApiError extends Error {
@@ -35,6 +37,7 @@ type RequestOptions<T> = {
  */
 export async function apiRequest<T>(path: `/api/${string}`, options: RequestOptions<T>): Promise<T> {
   const { method = 'GET', body, token, schema } = options;
+  const clientIp = forwardedClientIp((await headers()).get('x-forwarded-for'));
   let response: Response;
   try {
     response = await fetch(new URL(path, env().METIS_API_URL), {
@@ -45,6 +48,8 @@ export async function apiRequest<T>(path: `/api/${string}`, options: RequestOpti
         Accept: 'application/json',
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        // metis-api rate-limits public endpoints per client IP; without this every request would come from us.
+        ...(clientIp ? { 'X-Forwarded-For': clientIp } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });

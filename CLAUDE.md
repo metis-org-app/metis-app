@@ -38,6 +38,7 @@ src/
 │   ├── (app)/                 Signed-in pages inside AppShell: /inicio, ...
 │   ├── api/[...path]/route.ts BFF proxy to metis-api (see "Talking to metis-api")
 │   ├── salir/route.ts         Clears an expired session and redirects to sign-in
+│   ├── unirse/[codigo]/       Public page where students join a course with its code (no account)
 │   └── globals.css            Design tokens (@theme) and base styles
 ├── features/<feature>/        One folder per domain area (auth, workspaces, assessments, ...)
 │   ├── index.ts               Public entry for client and server components (components, actions)
@@ -88,6 +89,15 @@ Rules:
 `proxy.ts` sets a strict CSP with a per-request nonce (`script-src 'nonce-…' 'strict-dynamic'`), which is why every
 page renders dynamically (`connection()` in the root layout). Other headers live in `next.config.ts`.
 Do not add third-party scripts, fonts or images from other origins without updating the CSP deliberately.
+
+**Client IP forwarded to metis-api.** metis-api rate-limits its public endpoints (`/api/public/*`, used by
+`/unirse`) per client IP, and every request reaches it from this server. So `apiRequest()` and the `/api/*` proxy send
+`X-Forwarded-For` with the IP Next.js received: the incoming `x-forwarded-for` header, which Next.js fills with the
+connection address when the request brings none (`lib/api/client-ip.ts`). metis-api trusts that header only from the
+addresses in its `ForwardedHeaders:KnownProxies` (this server). **If Next.js is exposed directly, without a proxy in
+front that overwrites `X-Forwarded-For`, a client can forge the header and choose its own rate-limit bucket. Review
+this when the deployment is defined** (put a reverse proxy in front that sets the header, or read the address from the
+platform's own trusted header).
 
 ## Design system
 
