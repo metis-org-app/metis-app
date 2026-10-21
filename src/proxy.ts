@@ -5,7 +5,8 @@ import { SESSION_COOKIE } from '@/features/auth/session-cookie';
 
 /** Pages that work without a session. Everything else requires one. */
 const GUEST_ONLY = ['/ingresar', '/registro'];
-const PUBLIC = ['/salir'];
+// /unirse is where students join a course with its code: they have no account.
+const PUBLIC = ['/salir', '/unirse'];
 
 function matches(pathname: string, paths: string[]) {
   return paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
