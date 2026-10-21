@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE } from '@/features/auth/server';
+import { forwardedClientIp } from '@/lib/api/client-ip';
 import { toUpstreamPath } from '@/lib/api/upstream-path';
 import { env } from '@/lib/env';
 
@@ -36,6 +37,9 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
   }
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   if (token) headers.set('authorization', `Bearer ${token}`);
+  // Replaces whatever the browser sent: metis-api trusts this header only from us (see lib/api/client-ip.ts).
+  const clientIp = forwardedClientIp(request.headers.get('x-forwarded-for'));
+  if (clientIp) headers.set('x-forwarded-for', clientIp);
 
   let upstream: Response;
   try {
