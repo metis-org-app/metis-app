@@ -9,7 +9,7 @@ import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { createWorkspaceAction } from '../actions';
 import type { FormState } from '../schemas';
-import { SubmitButton } from './submit-button';
+import { SubmitButton } from '@/components/ui/submit-button';
 
 /** "Crear curso": the primary action of /cursos. On success the action navigates to the new course. */
 export function CreateWorkspaceDialog({ label = 'Crear curso' }: { label?: string }) {

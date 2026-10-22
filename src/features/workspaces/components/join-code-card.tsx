@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, Copy, Link2, RefreshCw } from 'lucide-react';
-import { useEffect, useState, useSyncExternalStore, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { AlertDialog, AlertDialogContent, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -9,24 +9,20 @@ import { regenerateJoinCodeAction } from '../actions';
 
 type Copied = 'code' | 'link' | null;
 
-const subscribeToNothing = () => () => {};
-const browserOrigin = () => window.location.origin;
-const noOrigin = () => '';
-
+/** `link` is built on the server from APP_URL (`joinLinkFor`), so "Copiar link" works from the first render. */
 export function JoinCodeCard({
   workspaceId,
   joinCode,
+  link,
   archived,
 }: {
   workspaceId: string;
   joinCode: string;
+  link: string;
   archived: boolean;
 }) {
-  // The origin is only known in the browser (the app may sit behind any host name); the server renders no link.
-  const origin = useSyncExternalStore(subscribeToNothing, browserOrigin, noOrigin);
   const [copied, setCopied] = useState<Copied>(null);
   const [copyFailed, setCopyFailed] = useState(false);
-  const link = origin ? `${origin}/unirse/${joinCode}` : '';
 
   useEffect(() => {
     if (!copied) return;
@@ -66,14 +62,14 @@ export function JoinCodeCard({
       >
         {joinCode}
       </p>
-      {link && <p className="-mt-2 text-sm break-all text-ink-soft">{link}</p>}
+      <p className="-mt-2 text-sm break-all text-ink-soft">{link}</p>
 
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={() => copy('code')}>
           {copied === 'code' ? <Check aria-hidden /> : <Copy aria-hidden />}
           {copied === 'code' ? 'Código copiado' : 'Copiar código'}
         </Button>
-        <Button variant="secondary" onClick={() => copy('link')} disabled={!link}>
+        <Button variant="secondary" onClick={() => copy('link')}>
           {copied === 'link' ? <Check aria-hidden /> : <Link2 aria-hidden />}
           {copied === 'link' ? 'Link copiado' : 'Copiar link'}
         </Button>
@@ -131,6 +127,7 @@ function RegenerateButton({ workspaceId, joinCode }: { workspaceId: string; join
           </>
         }
         confirmLabel="Generar código nuevo"
+        destructive
         pendingLabel="Generando…"
         onConfirm={confirm}
         pending={pending}

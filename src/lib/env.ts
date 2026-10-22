@@ -3,6 +3,8 @@ import { z } from 'zod';
 
 const schema = z.object({
   METIS_API_URL: z.url({ message: 'METIS_API_URL must be an absolute URL, e.g. http://localhost:5151' }),
+  // Public origin of this app, used to build links rendered on the server (e.g. the /unirse link of a course).
+  APP_URL: z.url({ message: 'APP_URL must be the absolute URL of this app, e.g. http://localhost:3000' }),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
 

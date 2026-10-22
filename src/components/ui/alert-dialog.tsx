@@ -14,6 +14,11 @@ type AlertDialogContentProps = {
   description: ReactNode;
   /** Label of the confirming button. It says what happens ("Archivar curso"), never just "Aceptar". */
   confirmLabel: string;
+  /**
+   * The action removes, archives or invalidates something: the confirm button uses the `danger` variant instead of
+   * the primary one with the gold shadow, which is reserved for constructive actions.
+   */
+  destructive?: boolean;
   onConfirm: () => void;
   /** Shown while the confirmed action runs; the dialog stays open so errors can be shown in place. */
   pending?: boolean;
@@ -31,6 +36,7 @@ export function AlertDialogContent({
   title,
   description,
   confirmLabel,
+  destructive = false,
   onConfirm,
   pending = false,
   pendingLabel,
@@ -59,7 +65,7 @@ export function AlertDialogContent({
           </AlertDialogPrimitive.Cancel>
           <button
             type="button"
-            className={buttonVariants({ variant: 'primary' })}
+            className={buttonVariants({ variant: destructive ? 'danger' : 'primary' })}
             onClick={onConfirm}
             disabled={pending}
             aria-disabled={pending}

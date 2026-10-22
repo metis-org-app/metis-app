@@ -9,7 +9,7 @@ import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { renameWorkspaceAction } from '../actions';
 import type { FormState } from '../schemas';
-import { SubmitButton } from './submit-button';
+import { SubmitButton } from '@/components/ui/submit-button';
 
 export function RenameWorkspaceDialog({ workspaceId, name }: { workspaceId: string; name: string }) {
   const [open, setOpen] = useState(false);

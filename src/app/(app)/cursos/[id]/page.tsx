@@ -13,7 +13,7 @@ import {
   RosterTable,
   studentCountLabel,
 } from '@/features/workspaces';
-import { getWorkspaceWithRoster } from '@/features/workspaces/server';
+import { getWorkspaceWithRoster, joinLinkFor } from '@/features/workspaces/server';
 
 export async function generateMetadata({ params }: PageProps<'/cursos/[id]'>): Promise<Metadata> {
   const data = await getWorkspaceWithRoster((await params).id);
@@ -64,7 +64,12 @@ export default async function CoursePage({ params }: PageProps<'/cursos/[id]'>) 
         </section>
       )}
 
-      <JoinCodeCard workspaceId={workspace.id} joinCode={workspace.joinCode} archived={archived} />
+      <JoinCodeCard
+        workspaceId={workspace.id}
+        joinCode={workspace.joinCode}
+        link={joinLinkFor(workspace.joinCode)}
+        archived={archived}
+      />
 
       <section
         aria-labelledby="nomina-titulo"

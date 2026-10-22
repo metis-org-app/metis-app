@@ -6,6 +6,8 @@ import { cn } from '@/lib/cn';
 /*
  * The gold offset shadow is the brand's signature. It is reserved for the primary action of a
  * screen so it keeps meaning something; every other button stays quiet.
+ * `danger` confirms a destructive action (remove, archive, delete, invalidate a code): solid red, never the gold
+ * shadow, which only marks constructive actions.
  */
 const buttonVariants = cva(
   'inline-flex shrink-0 items-center justify-center gap-2 rounded-full font-semibold whitespace-nowrap transition-[transform,box-shadow,background-color,color] duration-150 disabled:pointer-events-none disabled:opacity-55 [&_svg]:size-4 [&_svg]:shrink-0',
@@ -15,6 +17,8 @@ const buttonVariants = cva(
         primary:
           'border-2 border-ink bg-ink text-paper hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-offset focus-visible:shadow-offset active:translate-0 active:shadow-none',
         secondary: 'border border-line bg-paper text-ink hover:border-ink-soft hover:bg-cream-deep',
+        danger:
+          'border-2 border-danger bg-danger text-paper hover:border-ink hover:bg-ink focus-visible:outline-danger',
         ghost: 'text-ink-soft hover:bg-cream-deep hover:text-ink',
         link: 'rounded-sm px-0 text-gold-ink underline-offset-4 hover:underline',
       },
