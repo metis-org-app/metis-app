@@ -2,7 +2,7 @@
 
 import { LoaderCircle } from 'lucide-react';
 import { useFormStatus } from 'react-dom';
-import { Button } from '@/components/ui/button';
+import { Button } from './button';
 
 type SubmitButtonProps = {
   children: string;

@@ -50,6 +50,7 @@ export function ArchiveControls({ workspaceId, archived }: { workspaceId: string
           title="¿Archivar este curso?"
           description="Sale de tu lista de cursos activos, el código para unirse deja de funcionar y no se pueden sumar estudiantes. La nómina se conserva y puedes restaurarlo cuando quieras."
           confirmLabel="Archivar curso"
+          destructive
           pendingLabel="Archivando…"
           onConfirm={confirm}
           pending={pending}

@@ -5,7 +5,7 @@ import { Alert } from '@/components/ui/alert';
 import { addStudentAction } from '../actions';
 import type { FormState } from '../schemas';
 import { StudentFields } from './student-fields';
-import { SubmitButton } from './submit-button';
+import { SubmitButton } from '@/components/ui/submit-button';
 
 /** Inline form to add one student. The primary action of the course page. */
 export function AddStudentForm({ workspaceId }: { workspaceId: string }) {

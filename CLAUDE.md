@@ -35,7 +35,8 @@ npm run build          # production build
 src/
 ├── app/                       Routes only: layouts, pages, route handlers. Thin; compose features.
 │   ├── (auth)/                Guest pages: /ingresar, /registro (shared two-column layout)
-│   ├── (app)/                 Signed-in pages inside AppShell: /inicio, ...
+│   ├── (app)/                 Signed-in pages inside AppShell: /inicio, /cursos, /evaluaciones, ...
+│   ├── (preview)/             Signed-in pages without the shell: /evaluaciones/[id]/vista-previa (student view)
 │   ├── api/[...path]/route.ts BFF proxy to metis-api (see "Talking to metis-api")
 │   ├── salir/route.ts         Clears an expired session and redirects to sign-in
 │   ├── unirse/[codigo]/       Public page where students join a course with its code (no account)
@@ -46,6 +47,7 @@ src/
 │   ├── api.ts                 Calls to metis-api + Zod schemas of the responses (server-only)
 │   ├── actions.ts             Server actions ('use server') — mutations from forms
 │   ├── schemas.ts             Zod input schemas and form state types (shared client/server)
+│   ├── contract.ts            Optional: response schemas client components also validate (no server-only)
 │   └── components/            Feature UI
 ├── components/
 │   ├── ui/                    Design-system primitives (Button, Input, Field, Alert, ...). No feature logic.
@@ -70,10 +72,16 @@ Rules:
   feature's `api.ts`. Every response is validated with a Zod schema, so contract drift fails loudly at the edge.
 - **Client components** call `/api/<path>` on this origin (e.g. `fetch('/api/workspaces')`). The route handler
   forwards to metis-api adding the session token. It only accepts plain path segments, blocks `/api/auth/*`, and
-  rejects cross-origin unsafe methods (CSRF).
+  rejects cross-origin unsafe methods (CSRF). They validate responses with Zod too: put the schemas in the feature's
+  `contract.ts` (shared with `api.ts`). The assessment editor works this way (`features/assessments/client-api.ts`).
+- **Autosave** (`features/assessments/use-autosave.ts`): debounced (~800 ms), never two saves of one value at once, a
+  change made while saving is saved right after, failures keep the changes and offer "Reintentar", and nothing is
+  sent while the value is incomplete on the client. Reuse it for any editor that saves as you type.
 - Errors from metis-api are RFC 9457 Problem Details: use `parseProblem` / `fieldErrorsFrom` to map them to form
   errors. Map status codes to Spanish messages in the action; never show raw API messages that may be in English.
 - `METIS_API_URL` is server-only. The browser never talks to metis-api directly and never sees the token.
+- `APP_URL` (server-only, validated in `lib/env.ts`) is the public origin of this app. Links rendered on the server,
+  like the `/unirse/<code>` link of a course, are built from it so they work from the first render.
 
 ### Authentication
 
@@ -118,6 +126,10 @@ Principles:
 
 - **One signature:** the gold offset shadow (`shadow-offset`) is reserved for the primary action of a screen and
   the brand mark. Every other element stays quiet.
+- **Destructive confirmations use `danger`, never the gold shadow.** The shadow marks constructive actions (create,
+  publish, restore). Confirming an action that removes, archives, deletes or invalidates something (remove a
+  student, archive, regenerate a join code, delete a question or a draft) uses the `danger` button variant:
+  `<AlertDialogContent destructive …>`. The button that opens the confirmation stays `secondary` or `ghost`.
 - `font-display` (Fraunces) only for page titles and brand moments; everything else is Plus Jakarta Sans.
 - Sentence case everywhere. No all-caps labels, no eyebrow labels above headings, no decorative numbering
   (numbers only for real sequences).

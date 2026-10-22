@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { removeStudentAction, updateStudentAction } from '../actions';
 import type { FormState } from '../schemas';
 import { StudentFields } from './student-fields';
-import { SubmitButton } from './submit-button';
+import { SubmitButton } from '@/components/ui/submit-button';
 
 type Student = { id: string; name: string; email: string };
 
@@ -127,6 +127,7 @@ function RemoveStudentDialog({ workspaceId, student }: { workspaceId: string; st
         title={`¿Quitar a ${student.name}?`}
         description="Sale de la nómina de este curso. Si se equivocaron, puede volver a unirse con el código o puedes agregarlo de nuevo."
         confirmLabel="Quitar del curso"
+        destructive
         pendingLabel="Quitando…"
         onConfirm={confirm}
         pending={pending}

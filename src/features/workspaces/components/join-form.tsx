@@ -7,7 +7,7 @@ import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { joinWorkspaceAction } from '../actions';
 import type { JoinFormState } from '../schemas';
-import { SubmitButton } from './submit-button';
+import { SubmitButton } from '@/components/ui/submit-button';
 
 /** Public form where a student joins a course with its code. */
 export function JoinForm({ joinCode }: { joinCode: string }) {

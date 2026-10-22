@@ -3,6 +3,7 @@ import 'server-only';
 import { redirect } from 'next/navigation';
 import { getSessionToken } from '@/features/auth/server';
 import { ApiError, ApiUnavailableError } from '@/lib/api/server';
+import { env } from '@/lib/env';
 import { joinApi, joinCodeParamSchema, workspaceIdSchema, workspacesApi, type WorkspaceStatus } from './api';
 
 export type { JoinInfo, Student, Workspace, WorkspaceStatus } from './api';
@@ -31,6 +32,11 @@ export async function getWorkspaceWithRoster(id: string) {
     if (error instanceof ApiError && error.status === 404) return null;
     throw error;
   }
+}
+
+/** The link students open to join with this code, built on the server so it is ready in the first render. */
+export function joinLinkFor(joinCode: string) {
+  return new URL(`/unirse/${joinCode}`, env().APP_URL).toString();
 }
 
 export type JoinLookup =
