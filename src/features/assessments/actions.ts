@@ -7,8 +7,14 @@ import { getSessionToken } from '@/features/auth/server';
 import { ApiError, ApiUnavailableError } from '@/lib/api/server';
 import { assessmentsApi } from './api';
 import { assessmentIdSchema } from './contract';
-import { MESSAGES, messageForStatus } from './errors';
-import { createAssessmentSchema, type ActionResult, type FormState } from './schemas';
+import { fieldErrorsFromProblem, MESSAGES, messageForStatus } from './errors';
+import {
+  createAssessmentSchema,
+  draftToSaveSchema,
+  type ActionResult,
+  type DraftToSave,
+  type FormState,
+} from './schemas';
 
 /*
  * Mutations that change which page the teacher is on (create, publish, archive, duplicate, delete). Edits inside the
@@ -45,6 +51,29 @@ export async function createAssessmentAction(_previous: FormState, formData: For
     id = (await assessmentsApi.create(await token(), parsed.data.title)).id;
   } catch (error) {
     return { values, message: messageFor(error, { 400: MESSAGES.invalid }) };
+  }
+
+  refresh();
+  redirect(`/evaluaciones/${id}`);
+}
+
+/** "Crear borrador" in the review of an AI draft: saves it as a Draft with its items and opens the editor. */
+export async function createAssessmentFromDraftAction(draft: DraftToSave): Promise<ActionResult> {
+  const parsed = draftToSaveSchema.safeParse(draft);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? MESSAGES.invalid };
+  }
+
+  let id: string;
+  try {
+    id = (await assessmentsApi.createFromDraft(await token(), parsed.data)).id;
+  } catch (error) {
+    // A 400 here is about the title or instructions the teacher edited, or a question that no longer fits the rules.
+    if (error instanceof ApiError && error.status === 400) {
+      const fieldErrors = fieldErrorsFromProblem(error.problem);
+      return { ok: false, message: fieldErrors.title ?? fieldErrors.instructions ?? MESSAGES.draftInvalid };
+    }
+    return { ok: false, message: messageFor(error) };
   }
 
   refresh();

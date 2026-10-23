@@ -1,4 +1,4 @@
-import { toUpstreamPath } from './upstream-path';
+import { toUpstreamPath, upstreamTimeoutMs } from './upstream-path';
 
 describe('toUpstreamPath', () => {
   it('maps plain segments to the metis-api path', () => {
@@ -16,5 +16,13 @@ describe('toUpstreamPath', () => {
     [['Auth', 'me']],
   ])('rejects %j', (segments) => {
     expect(toUpstreamPath(segments)).toBeNull();
+  });
+});
+
+describe('upstreamTimeoutMs', () => {
+  it('gives AI generation 150 s and every other route 60 s', () => {
+    expect(upstreamTimeoutMs('/api/assessments/generate')).toBe(150_000);
+    expect(upstreamTimeoutMs('/api/assessments')).toBe(60_000);
+    expect(upstreamTimeoutMs('/api/assessments/generate/extra')).toBe(60_000);
   });
 });

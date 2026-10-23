@@ -1,9 +1,10 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 import { useActionState } from 'react';
 import { Alert } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,10 @@ import { createAssessmentAction } from '../actions';
 import { LIMITS } from '../item-draft';
 import type { FormState } from '../schemas';
 
-/** "Nueva evaluación": the primary action of /evaluaciones. Creates the draft and opens the editor. */
+/**
+ * "Nueva evaluación": the primary action of /evaluaciones. Two ways to start: a blank draft with a title, which opens the
+ * editor, or a draft proposed by Metis from a topic and materials (/evaluaciones/nueva/metis).
+ */
 export function CreateAssessmentDialog() {
   const [state, formAction] = useActionState<FormState, FormData>(createAssessmentAction, {});
 
@@ -26,7 +30,7 @@ export function CreateAssessmentDialog() {
       </DialogTrigger>
       <DialogContent
         title="Nueva evaluación"
-        description="Ponle un título que tus estudiantes reconozcan. Las preguntas las agregas en el editor."
+        description="Empieza en blanco o pídele a Metis una propuesta de preguntas."
       >
         <form action={formAction} noValidate className="grid gap-5">
           {state.message && <Alert>{state.message}</Alert>}
@@ -48,11 +52,20 @@ export function CreateAssessmentDialog() {
               />
             )}
           </Field>
-          {/* Step 4 adds the second way to start here: "Pedirle un borrador a Metis" (topic and materials). */}
           <SubmitButton pendingLabel="Creando…" className="justify-self-end">
             Crear y empezar a editar
           </SubmitButton>
         </form>
+        <div className="grid gap-3 border-t border-line pt-5">
+          <p className="text-sm text-ink-soft">
+            ¿Prefieres partir de una propuesta? Cuéntale a Metis el tema, súbele tus materiales y revisa las
+            preguntas antes de guardarlas.
+          </p>
+          <Link href="/evaluaciones/nueva/metis" className={buttonVariants({ variant: 'secondary' })}>
+            <Sparkles aria-hidden />
+            Pedirle un borrador a Metis
+          </Link>
+        </div>
       </DialogContent>
     </Dialog>
   );

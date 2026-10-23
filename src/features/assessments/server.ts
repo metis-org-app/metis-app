@@ -2,7 +2,7 @@
 import 'server-only';
 import { redirect } from 'next/navigation';
 import { getSessionToken } from '@/features/auth/server';
-import { ApiError } from '@/lib/api/server';
+import { ApiError, ApiUnavailableError } from '@/lib/api/server';
 import { assessmentsApi } from './api';
 import { assessmentIdSchema, type AssessmentStatus } from './contract';
 
@@ -32,3 +32,14 @@ async function orNull<T>(id: string, load: (token: string, id: string) => Promis
 export const getAssessment = (id: string) => orNull(id, assessmentsApi.get);
 
 export const getAssessmentPreview = (id: string) => orNull(id, assessmentsApi.preview);
+
+/** Whether drafts come from real AI; null when metis-api could not say (the page then shows no notice). */
+export async function isAiAvailable(): Promise<boolean | null> {
+  try {
+    return (await assessmentsApi.aiStatus(await token())).isAiAvailable;
+  } catch (error) {
+    if (error instanceof ApiUnavailableError || (error instanceof ApiError && error.status !== 401))
+      return null;
+    throw error;
+  }
+}

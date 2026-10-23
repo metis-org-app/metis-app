@@ -35,7 +35,7 @@ npm run dev                     # http://localhost:3000
 | App shell, home                               | Done                                                |
 | Classes and students                          | Done                                                |
 | Assessments: editor with autosave, preview    | Done (publish, archive, duplicate; four item types) |
-| AI assistant (draft from Metis)               | Next                                                |
-| Assignments, student flow with Metis, results | Planned                                             |
+| AI assistant (draft from Metis)               | Done (topic and materials, review, create)          |
+| Assignments, student flow with Metis, results | Next                                                |
 
 `index.html` and `avatar.png` are the original landing prototype, kept for reference.

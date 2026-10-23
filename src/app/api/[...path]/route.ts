@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE } from '@/features/auth/server';
 import { forwardedClientIp } from '@/lib/api/client-ip';
-import { toUpstreamPath } from '@/lib/api/upstream-path';
+import { toUpstreamPath, upstreamTimeoutMs } from '@/lib/api/upstream-path';
 import { env } from '@/lib/env';
 
 /*
@@ -46,12 +46,16 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
     upstream = await fetch(url, {
       method: request.method,
       headers,
+      // The body is passed through as a stream, never read here: a 40 MB upload is not held in memory. proxy.ts does
+      // not run on /api/* (see its matcher), so Next.js does not buffer the body either (proxyClientMaxBodySize).
       body: ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
       // Required by Node's fetch to stream a request body (file uploads).
       duplex: 'half',
       cache: 'no-store',
       redirect: 'manual',
-      signal: AbortSignal.timeout(60_000),
+      // Stops waiting when the route's time is up, or when the browser gives up (a cancelled AI generation), so
+      // metis-api stops working on a request nobody will read.
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(upstreamTimeoutMs(upstreamPath))]),
     } as RequestInit & { duplex: 'half' });
   } catch {
     return NextResponse.json(

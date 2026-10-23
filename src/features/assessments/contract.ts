@@ -72,6 +72,36 @@ export const studentAssessmentSchema = z.strictObject({
   items: z.array(studentItemSchema),
 });
 
+/**
+ * A question of an AI draft (POST /api/assessments/generate). It has the shape of an item body, so the draft can be sent
+ * as-is to POST /api/assessments; there are no ids or keys until it is saved.
+ */
+export const draftItemSchema = z.object({
+  type: itemTypeSchema,
+  prompt: z.string(),
+  points: z.number().positive(),
+  options: z.array(z.object({ text: z.string(), isCorrect: z.boolean() })).nullable(),
+  isTrue: z.boolean().nullable(),
+  minWords: z.number().int().nullable(),
+  maxWords: z.number().int().nullable(),
+  teacherNotes: z.string().nullable(),
+  assistantEnabled: z.boolean(),
+  studentHint: z.string().nullable(),
+});
+
+/** The AI draft. Not saved: it lives in the browser until the teacher creates the assessment from it. */
+export const assessmentDraftSchema = z.object({
+  title: z.string(),
+  instructions: z.string().nullable(),
+  items: z.array(draftItemSchema),
+  /** Spanish messages from metis-api for the teacher (cuts, PDFs read as text, discarded questions, sample mode). */
+  notices: z.array(z.string()),
+  /** False for the sample draft built without AI. */
+  aiGenerated: z.boolean(),
+});
+
+export const aiStatusSchema = z.object({ isAiAvailable: z.boolean() });
+
 /** Ids come from the URL or the client: only UUIDs may become part of an upstream path. */
 export const assessmentIdSchema = z.uuid();
 
@@ -82,6 +112,8 @@ export type Assessment = z.infer<typeof assessmentSchema>;
 export type AssessmentSummary = z.infer<typeof assessmentSummarySchema>;
 export type StudentItem = z.infer<typeof studentItemSchema>;
 export type StudentAssessment = z.infer<typeof studentAssessmentSchema>;
+export type DraftItem = z.infer<typeof draftItemSchema>;
+export type AssessmentDraft = z.infer<typeof assessmentDraftSchema>;
 
 /** Body of POST/PUT /api/assessments/{id}/items. Fields that do not belong to the type are left out. */
 export type ItemRequest = {

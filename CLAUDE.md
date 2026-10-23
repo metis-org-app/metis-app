@@ -74,6 +74,10 @@ Rules:
   forwards to metis-api adding the session token. It only accepts plain path segments, blocks `/api/auth/*`, and
   rejects cross-origin unsafe methods (CSRF). They validate responses with Zod too: put the schemas in the feature's
   `contract.ts` (shared with `api.ts`). The assessment editor works this way (`features/assessments/client-api.ts`).
+- **The /api proxy** streams request bodies to metis-api (never reads them) and propagates the browser's abort.
+  `proxy.ts` must keep excluding `/api/*` from its matcher: where the Next.js proxy runs, it buffers the request body in
+  memory and truncates it beyond `proxyClientMaxBodySize` (10 MB). The proxy waits 60 s for metis-api, except the
+  routes in `SLOW_ROUTES` (`lib/api/upstream-path.ts`): `/api/assessments/generate` waits 150 s.
 - **Autosave** (`features/assessments/use-autosave.ts`): debounced (~800 ms), never two saves of one value at once, a
   change made while saving is saved right after, failures keep the changes and offer "Reintentar", and nothing is
   sent while the value is incomplete on the client. Reuse it for any editor that saves as you type.
@@ -144,6 +148,12 @@ Principles:
 - Forms: `useActionState` + a server action returning `{ message?, fieldErrors?, values? }`; validate with the
   feature's Zod schema on the server; use `noValidate` and show server messages (consistent Spanish copy).
   Never echo passwords back.
+- **Exception: operations that must be cancellable, stream files, or autosave** use `fetch` from a client component to
+  the `/api/*` proxy instead of a server action (a server action cannot be aborted, receives the whole body at once, and
+  re-renders the route on every call). Examples: the editor's autosave (step 3, `features/assessments/client-api.ts`)
+  and the AI draft generator (step 4, `features/assessments/generator/request.ts`, `FormData` + `AbortController`).
+  They validate responses with Zod (`contract.ts`) and map errors to Spanish messages like the actions do. Everything
+  else, including saving the generated draft (`createAssessmentFromDraftAction`), stays a server action.
 - Routes are typed (`typedRoutes`). User-facing URLs are in Spanish (`/ingresar`, `/inicio`, `/evaluaciones`).
 - New signed-in sections: add the page under `app/(app)/`, call `requireUser()`, and add an entry to
   `components/shell/nav-items.ts`.

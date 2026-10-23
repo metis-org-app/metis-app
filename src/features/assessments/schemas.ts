@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { draftItemSchema } from './contract';
 import { LIMITS } from './item-draft';
 
 // Limits mirror the metis-api domain (docs/domain-model.md › Tables › assessments); the API stays the authority.
@@ -20,6 +21,16 @@ export const detailsSchema = z.object({
 });
 
 export type Details = z.output<typeof detailsSchema>;
+
+/** An AI draft the teacher reviewed and wants to save: the title and instructions they edited, and the items they kept. */
+export const draftToSaveSchema = detailsSchema.extend({
+  items: z
+    .array(draftItemSchema)
+    .min(1, 'El borrador necesita al menos una pregunta.')
+    .max(LIMITS.itemsMax, 'Una evaluación puede tener hasta 100 preguntas.'),
+});
+
+export type DraftToSave = z.input<typeof draftToSaveSchema>;
 
 /** State returned by the form actions of this feature. */
 export type FormState = {
