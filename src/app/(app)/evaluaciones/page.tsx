@@ -42,6 +42,10 @@ export default async function AssessmentsPage({ searchParams }: PageProps<'/eval
             esté lista, la publicas y queda fija para asignarla a tus cursos. Si después quieres cambiarla, la
             duplicas.
           </p>
+          <p className="text-ink-soft">
+            También puedes pedirle un borrador a Metis: le cuentas el tema, le subes tus materiales si
+            quieres, y revisas las preguntas que propone antes de guardarlas.
+          </p>
           <CreateAssessmentDialog />
         </section>
       ) : (
