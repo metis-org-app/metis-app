@@ -17,6 +17,7 @@ export const MESSAGES = {
     'No pudimos publicarla. Revisa que tenga al menos una pregunta y recarga la página: puede que ya esté publicada.',
   alreadyArchived: 'Esta evaluación ya estaba archivada.',
   deleteNotDraft: 'Solo se pueden eliminar borradores. Una evaluación publicada se archiva.',
+  draftInvalid: 'Alguna pregunta del borrador no cumple el formato. Quítala o vuelve a generar el borrador.',
 } as const;
 
 /** Next to the field the API rejected. Only fields the editor shows; anything else becomes a general message. */

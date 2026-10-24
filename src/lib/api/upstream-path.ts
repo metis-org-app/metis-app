@@ -17,3 +17,18 @@ export function toUpstreamPath(segments: readonly string[]): `/api/${string}` | 
   }
   return `/api/${segments.join('/')}`;
 }
+
+const DEFAULT_TIMEOUT_MS = 60_000;
+
+/**
+ * Routes that legitimately take longer than the default. AI generation waits for the model (metis-api gives each attempt
+ * up to 120 s) and receives up to 40 MB of files.
+ */
+const SLOW_ROUTES: Partial<Record<string, number>> = {
+  '/api/assessments/generate': 150_000,
+};
+
+/** How long the proxy waits for metis-api on this path. */
+export function upstreamTimeoutMs(upstreamPath: string): number {
+  return SLOW_ROUTES[upstreamPath.toLowerCase()] ?? DEFAULT_TIMEOUT_MS;
+}
