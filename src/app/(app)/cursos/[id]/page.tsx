@@ -2,6 +2,9 @@ import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getAssessments } from '@/features/assessments/server';
+import { AssignDialog, AssignmentList } from '@/features/assignments';
+import { getAssignments } from '@/features/assignments/server';
 import { requireUser } from '@/features/auth/server';
 import {
   AddStudentForm,
@@ -29,6 +32,11 @@ export default async function CoursePage({ params }: PageProps<'/cursos/[id]'>) 
 
   const { workspace, students } = data;
   const archived = workspace.status === 'Archived';
+  // An archived course cannot receive assignments; its earlier ones are still listed.
+  const [assignments, published] = await Promise.all([
+    getAssignments({ workspaceId: workspace.id }),
+    archived ? Promise.resolve([]) : getAssessments('Published'),
+  ]);
 
   return (
     <div className="grid gap-10">
@@ -63,6 +71,30 @@ export default async function CoursePage({ params }: PageProps<'/cursos/[id]'>) 
           <ArchiveControls workspaceId={workspace.id} archived />
         </section>
       )}
+
+      <section aria-labelledby="asignaciones-titulo" className="grid gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="asignaciones-titulo" className="text-lg font-semibold">
+            Asignaciones
+          </h2>
+          {!archived && (
+            <AssignDialog
+              from={{ kind: 'workspace', id: workspace.id, name: workspace.name }}
+              options={published.map((assessment) => ({ id: assessment.id, label: assessment.title }))}
+              label="Asignar evaluación"
+            />
+          )}
+        </div>
+        {assignments.length > 0 ? (
+          <AssignmentList assignments={assignments} show="assessment" />
+        ) : (
+          <p className="text-ink-soft">
+            {archived
+              ? 'Este curso no tiene asignaciones.'
+              : 'Aún no hay evaluaciones asignadas. Asigna una publicada para obtener su link.'}
+          </p>
+        )}
+      </section>
 
       <JoinCodeCard
         workspaceId={workspace.id}

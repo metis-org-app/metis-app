@@ -4,7 +4,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AssessmentActions, AssessmentEditor, AssessmentReadOnly } from '@/features/assessments';
 import { getAssessment } from '@/features/assessments/server';
+import { AssignDialog, AssignmentList } from '@/features/assignments';
+import { getAssignments } from '@/features/assignments/server';
 import { requireUser } from '@/features/auth/server';
+import { getWorkspaces } from '@/features/workspaces/server';
 
 export async function generateMetadata({ params }: PageProps<'/evaluaciones/[id]'>): Promise<Metadata> {
   const assessment = await getAssessment((await params).id);
@@ -24,7 +27,15 @@ export default async function AssessmentPage({ params }: PageProps<'/evaluacione
   if (!assessment) notFound();
 
   const draft = assessment.status === 'Draft';
+  const published = assessment.status === 'Published';
   const back = BACK[assessment.status];
+  // Only a published assessment can be assigned, to an active course; a draft has no assignments.
+  const [assignments, courses] = draft
+    ? [[], []]
+    : await Promise.all([
+        getAssignments({ assessmentId: assessment.id }),
+        published ? getWorkspaces('Active') : Promise.resolve([]),
+      ]);
 
   return (
     <div className="grid gap-6">
@@ -55,7 +66,35 @@ export default async function AssessmentPage({ params }: PageProps<'/evaluacione
         <AssessmentEditor assessment={assessment} />
       ) : (
         <>
-          <AssessmentActions assessmentId={assessment.id} status={assessment.status} />
+          <AssessmentActions
+            assessmentId={assessment.id}
+            status={assessment.status}
+            assign={
+              published && (
+                <AssignDialog
+                  from={{ kind: 'assessment', id: assessment.id, title: assessment.title }}
+                  options={courses.map((course) => ({ id: course.id, label: course.name }))}
+                  label="Asignar a un curso"
+                  primary
+                />
+              )
+            }
+          />
+          {(published || assignments.length > 0) && (
+            <section aria-labelledby="asignaciones-titulo" className="grid gap-3">
+              <h2 id="asignaciones-titulo" className="text-lg font-semibold">
+                Asignaciones
+              </h2>
+              {assignments.length > 0 ? (
+                <AssignmentList assignments={assignments} show="workspace" />
+              ) : (
+                <p className="text-ink-soft">
+                  Aún no la asignas. Asígnala a un curso para obtener el link que compartes con tus
+                  estudiantes.
+                </p>
+              )}
+            </section>
+          )}
           <AssessmentReadOnly assessment={assessment} />
         </>
       )}
