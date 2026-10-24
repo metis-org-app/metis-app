@@ -40,6 +40,7 @@ src/
 │   ├── api/[...path]/route.ts BFF proxy to metis-api (see "Talking to metis-api")
 │   ├── salir/route.ts         Clears an expired session and redirects to sign-in
 │   ├── unirse/[codigo]/       Public page where students join a course with its code (no account)
+│   ├── rendir/[token]/        Public page of an assignment's student link (no account; step 6 adds the email entry)
 │   └── globals.css            Design tokens (@theme) and base styles
 ├── features/<feature>/        One folder per domain area (auth, workspaces, assessments, ...)
 │   ├── index.ts               Public entry for client and server components (components, actions)
@@ -85,7 +86,8 @@ Rules:
   errors. Map status codes to Spanish messages in the action; never show raw API messages that may be in English.
 - `METIS_API_URL` is server-only. The browser never talks to metis-api directly and never sees the token.
 - `APP_URL` (server-only, validated in `lib/env.ts`) is the public origin of this app. Links rendered on the server,
-  like the `/unirse/<code>` link of a course, are built from it so they work from the first render.
+  like the `/unirse/<code>` link of a course and the `/rendir/<shareToken>` link of an assignment (and its QR), are
+  built from it so they work from the first render.
 
 ### Authentication
 
@@ -154,6 +156,14 @@ Principles:
   and the AI draft generator (step 4, `features/assessments/generator/request.ts`, `FormData` + `AbortController`).
   They validate responses with Zod (`contract.ts`) and map errors to Spanish messages like the actions do. Everything
   else, including saving the generated draft (`createAssessmentFromDraftAction`), stays a server action.
+- **Dates the teacher types** (`<input type="datetime-local">`) are in the browser's zone, which the server does not
+  know: the client converts them to ISO 8601 with the offset of that moment (`features/assignments/dates.ts`, which
+  handles Chile's daylight saving changes) and sends that. **Dates are shown in the browser's zone** with
+  `LocalDateTime` (Chilean format; the server renders Chile's zone first and the browser re-renders without a
+  hydration mismatch).
+- A form whose controls are all controlled (radios, switches, dates: the assignment form) submits with `onSubmit` +
+  `startTransition(() => formAction(formData))` instead of `action={formAction}`: a form action resets the form
+  afterwards, which leaves the DOM of controlled radios out of step with React after a failed submit.
 - Routes are typed (`typedRoutes`). User-facing URLs are in Spanish (`/ingresar`, `/inicio`, `/evaluaciones`).
 - New signed-in sections: add the page under `app/(app)/`, call `requireUser()`, and add an entry to
   `components/shell/nav-items.ts`.

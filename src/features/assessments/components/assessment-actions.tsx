@@ -2,20 +2,25 @@
 
 import { Archive, CopyPlus, Eye } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, type ReactNode } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { AlertDialog, AlertDialogContent, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { archiveAssessmentAction, duplicateAssessmentAction } from '../actions';
 import type { AssessmentStatus } from '../contract';
 
-/** Actions of a published or archived assessment. "Duplicar para editar" is the screen's primary action. */
+/**
+ * Actions of a published or archived assessment. `assign` ("Asignar a un curso", from the assignments feature) is the
+ * primary action of a published one; otherwise "Duplicar para editar" is.
+ */
 export function AssessmentActions({
   assessmentId,
   status,
+  assign,
 }: {
   assessmentId: string;
   status: AssessmentStatus;
+  assign?: ReactNode;
 }) {
   const [duplicateError, setDuplicateError] = useState<string>();
   const [duplicating, startDuplicate] = useTransition();
@@ -31,7 +36,13 @@ export function AssessmentActions({
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap gap-2">
-        <Button onClick={duplicate} disabled={duplicating} aria-disabled={duplicating}>
+        {assign}
+        <Button
+          variant={assign ? 'secondary' : 'primary'}
+          onClick={duplicate}
+          disabled={duplicating}
+          aria-disabled={duplicating}
+        >
           <CopyPlus aria-hidden />
           {duplicating ? 'Duplicando…' : 'Duplicar para editar'}
         </Button>
