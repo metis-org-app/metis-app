@@ -1,13 +1,20 @@
 import { CalendarClock, CircleHelp, Clock, ListChecks, Sparkles } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { durationLabel, itemCountLabel, publicAvailabilityText } from '../availability';
 import type { PublicAssignment } from '../contract';
 import { DatedSentence } from './local-date-time';
 
 /**
  * What a student sees on the link before starting. Most open it from a phone, often by scanning the QR, so it is one
- * column that reads well from 360 px. Step 6 replaces the closing note with the email entry.
+ * column that reads well from 360 px. `children` (the email entry) shows only while the assignment is open.
  */
-export function PublicAssignmentView({ assignment }: { assignment: PublicAssignment }) {
+export function PublicAssignmentView({
+  assignment,
+  children,
+}: {
+  assignment: PublicAssignment;
+  children?: ReactNode;
+}) {
   const closed = assignment.availability === 'Closed';
 
   return (
@@ -68,9 +75,7 @@ export function PublicAssignmentView({ assignment }: { assignment: PublicAssignm
         </section>
       )}
 
-      {!closed && (
-        <p className="border-t border-line pt-5 text-sm text-ink-soft">Pronto podrás responder desde aquí.</p>
-      )}
+      {assignment.availability === 'Open' && children}
     </>
   );
 }

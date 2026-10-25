@@ -1,7 +1,7 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { useId } from 'react';
+import { useId, type Ref } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/cn';
 import type { StudentItem } from '../../contract';
@@ -15,8 +15,14 @@ type StudentQuestionProps = {
   answer: StudentAnswer;
   onAnswer: (answer: StudentAnswer) => void;
   disabled?: boolean;
+  /** The prompt heading, focusable from code: the submission moves focus to it when the question changes. */
+  promptRef?: Ref<HTMLHeadingElement>;
 };
 
+/** metis-api's limit for an essay answer. */
+const MAX_ESSAY_LENGTH = 20_000;
+
+/** Words separated by whitespace, counted the same way as metis-api, which enforces `maxWords` when saving. */
 export function countWords(text: string) {
   return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
 }
@@ -28,7 +34,13 @@ const pointsLabel = (points: number) => (points === 1 ? '1 punto' : `${formatPoi
  * Built for phones first: every option is a full-width target at least 48 px tall, and it works from 360 px up.
  * It only renders what the student view of the API carries, so it cannot show an answer key.
  */
-export function StudentQuestion({ item, answer, onAnswer, disabled = false }: StudentQuestionProps) {
+export function StudentQuestion({
+  item,
+  answer,
+  onAnswer,
+  disabled = false,
+  promptRef,
+}: StudentQuestionProps) {
   const id = useId();
   const promptId = `${id}-prompt`;
 
@@ -41,7 +53,12 @@ export function StudentQuestion({ item, answer, onAnswer, disabled = false }: St
         <p className="text-sm text-ink-soft">
           Pregunta {item.position} · {pointsLabel(item.points)}
         </p>
-        <h2 id={promptId} className="text-lg leading-snug font-semibold break-words whitespace-pre-wrap">
+        <h2
+          id={promptId}
+          ref={promptRef}
+          tabIndex={-1}
+          className="text-lg leading-snug font-semibold break-words whitespace-pre-wrap focus:outline-none"
+        >
           {item.prompt}
         </h2>
       </header>
@@ -183,6 +200,7 @@ function EssayAnswer({
           ? `Hasta ${maxWords} palabras.`
           : null;
   const outOfRange = (minWords !== null && words < minWords) || (maxWords !== null && words > maxWords);
+  const overMax = maxWords !== null && words > maxWords;
 
   return (
     <div className="grid gap-1.5">
@@ -194,7 +212,9 @@ function EssayAnswer({
         value={text}
         onChange={(event) => onAnswer(event.target.value)}
         disabled={disabled}
-        aria-describedby={`${id}-words`}
+        maxLength={MAX_ESSAY_LENGTH}
+        aria-describedby={`${id}-words${overMax ? ` ${id}-over` : ''}`}
+        aria-invalid={overMax || undefined}
         className="min-h-40 text-base"
       />
       <p id={`${id}-words`} className="text-sm text-ink-soft" aria-live="polite">
@@ -206,6 +226,11 @@ function EssayAnswer({
           </>
         )}
       </p>
+      {overMax && (
+        <p id={`${id}-over`} className="text-sm font-semibold text-danger">
+          Tu respuesta tiene más de {maxWords} palabras. Acórtala para que se pueda guardar.
+        </p>
+      )}
     </div>
   );
 }

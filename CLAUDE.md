@@ -40,7 +40,8 @@ src/
 │   ├── api/[...path]/route.ts BFF proxy to metis-api (see "Talking to metis-api")
 │   ├── salir/route.ts         Clears an expired session and redirects to sign-in
 │   ├── unirse/[codigo]/       Public page where students join a course with its code (no account)
-│   ├── rendir/[token]/        Public page of an assignment's student link (no account; step 6 adds the email entry)
+│   ├── rendir/[token]/        Public student link: email entry, the submission and the result (no account)
+│   │   └── sesion/            Route handlers that relay the submission's calls with the link's cookie (see Security)
 │   └── globals.css            Design tokens (@theme) and base styles
 ├── features/<feature>/        One folder per domain area (auth, workspaces, assessments, ...)
 │   ├── index.ts               Public entry for client and server components (components, actions)
@@ -82,6 +83,13 @@ Rules:
 - **Autosave** (`features/assessments/use-autosave.ts`): debounced (~800 ms), never two saves of one value at once, a
   change made while saving is saved right after, failures keep the changes and offer "Reintentar", and nothing is
   sent while the value is incomplete on the client. Reuse it for any editor that saves as you type.
+- **The student's submission** (`features/submissions`) saves per item instead: `ResponseQueue` groups the changes of
+  several questions and sends them in one `PUT` ~1.5 s after the last one (0 s in the last 5 s before the deadline),
+  never two at once; a failed save is retried with backoff and right away when the connection comes back, without
+  overwriting newer answers. An essay over `maxWords` is kept out of the saves (metis-api would reject the whole
+  batch) and blocks a manual submit. The timer uses the server clock (`serverNow` of every response); when it reaches
+  0 the screen saves what is pending and submits by itself. Words are counted by splitting on whitespace, like
+  metis-api (`countWords`).
 - Errors from metis-api are RFC 9457 Problem Details: use `parseProblem` / `fieldErrorsFrom` to map them to form
   errors. Map status codes to Spanish messages in the action; never show raw API messages that may be in English.
 - `METIS_API_URL` is server-only. The browser never talks to metis-api directly and never sees the token.
@@ -112,6 +120,23 @@ addresses in its `ForwardedHeaders:KnownProxies` (this server). **If Next.js is 
 front that overwrites `X-Forwarded-For`, a client can forge the header and choose its own rate-limit bucket. Review
 this when the deployment is defined** (put a reverse proxy in front that sets the header, or read the address from the
 platform's own trusted header).
+
+**The student's access key.** A submission is reached only with its access key (metis-api never accepts the email for
+that), so it is a credential and is handled like the session token:
+
+- `startSubmissionAction` receives it from metis-api and stores it in the **httpOnly** `metis_rendicion` cookie with
+  `Path=/rendir/<shareToken>` (`SameSite=Lax` so it works when the link is opened from a QR or a chat app, `Secure` in
+  production, 30 days so the result can be seen later). One cookie per assignment link. It never appears in a URL,
+  in props or in client JavaScript (`features/submissions/session.ts`).
+- The page reads it on the server (`loadTakePage`); reloading or reopening the link resumes the submission or shows
+  its result, also after the teacher regenerates the link.
+- The submission screen calls the route handlers under the link's own path (`/rendir/<shareToken>/sesion`,
+  `/sesion/respuestas`, `/sesion/entrega`), because the browser only sends the cookie there; the generic `/api` proxy
+  never receives it. They relay to `/api/public/submissions/{accessKey}/…` with the client IP, pass the status and
+  body through, reject cross-site unsafe requests (`lib/api/same-origin.ts`) and drop the cookie when metis-api
+  answers 404 (the key was rotated by "continuar en otro dispositivo").
+- These routes run under `proxy.ts` (not under `/api/*`), which buffers bodies up to 10 MB: enough for 100 essays of
+  20 000 characters.
 
 ## Design system
 

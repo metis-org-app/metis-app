@@ -19,15 +19,24 @@ type DialogContentProps = {
   description?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** By default focus returns to the trigger on close; a dialog that navigates can send it elsewhere. */
+  onCloseAutoFocus?: (event: Event) => void;
 };
 
 /** Modal with a visible title (announced by screen readers), an optional description and a close button. */
-export function DialogContent({ title, description, children, className }: DialogContentProps) {
+export function DialogContent({
+  title,
+  description,
+  children,
+  className,
+  onCloseAutoFocus,
+}: DialogContentProps) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className={overlayClassName} />
       <DialogPrimitive.Content
         className={cn(surfaceClassName, 'max-w-md', className)}
+        {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
         {...(description ? {} : { 'aria-describedby': undefined })}
       >
         <div className="grid gap-1.5 pr-8">

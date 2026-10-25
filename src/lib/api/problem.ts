@@ -7,6 +7,8 @@ const problemSchema = z.object({
   status: z.number().optional(),
   detail: z.string().optional(),
   errors: z.record(z.string(), z.array(z.string())).optional(),
+  // Set by metis-api on the conflicts a client must tell apart (e.g. "alreadyStarted", "submissionClosed").
+  code: z.string().optional(),
 });
 
 export type Problem = z.infer<typeof problemSchema>;
