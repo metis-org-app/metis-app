@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE } from '@/features/auth/server';
 import { forwardedClientIp } from '@/lib/api/client-ip';
+import { isSameOrigin } from '@/lib/api/same-origin';
 import { toUpstreamPath, upstreamTimeoutMs } from '@/lib/api/upstream-path';
 import { env } from '@/lib/env';
 
@@ -12,12 +13,6 @@ import { env } from '@/lib/env';
 
 const FORWARDED_REQUEST_HEADERS = ['accept', 'accept-language', 'content-type'];
 const FORWARDED_RESPONSE_HEADERS = ['content-type', 'content-disposition', 'location', 'retry-after'];
-
-function isSameOrigin(request: NextRequest) {
-  const fetchSite = request.headers.get('sec-fetch-site');
-  if (fetchSite) return fetchSite === 'same-origin';
-  return request.headers.get('origin') === request.nextUrl.origin;
-}
 
 async function forward(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const upstreamPath = toUpstreamPath((await context.params).path);
