@@ -13,6 +13,7 @@ Requirements: Node 22.22.2+ (see `.nvmrc`; jsdom needs it) and npm 11.
 ```bash
 npm install
 cp .env.example .env.local      # METIS_API_URL=http://localhost:5151, APP_URL=http://localhost:3000
+                                # (METIS_PROXY_SECRET: required in production, same value as metis-api)
 npm run mock:api                # optional, auth only; otherwise run metis-api
 npm run dev                     # http://localhost:3000
 ```

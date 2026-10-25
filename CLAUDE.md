@@ -93,6 +93,7 @@ Rules:
 - Errors from metis-api are RFC 9457 Problem Details: use `parseProblem` / `fieldErrorsFrom` to map them to form
   errors. Map status codes to Spanish messages in the action; never show raw API messages that may be in English.
 - `METIS_API_URL` is server-only. The browser never talks to metis-api directly and never sees the token.
+- `METIS_PROXY_SECRET` is server-only too: the secret shared with metis-api for the client IP (see Security headers).
 - `APP_URL` (server-only, validated in `lib/env.ts`) is the public origin of this app. Links rendered on the server,
   like the `/unirse/<code>` link of a course and the `/rendir/<shareToken>` link of an assignment (and its QR), are
   built from it so they work from the first render.
@@ -112,14 +113,24 @@ Rules:
 page renders dynamically (`connection()` in the root layout). Other headers live in `next.config.ts`.
 Do not add third-party scripts, fonts or images from other origins without updating the CSP deliberately.
 
-**Client IP forwarded to metis-api.** metis-api rate-limits its public endpoints (`/api/public/*`, used by
-`/unirse`) per client IP, and every request reaches it from this server. So `apiRequest()` and the `/api/*` proxy send
-`X-Forwarded-For` with the IP Next.js received: the incoming `x-forwarded-for` header, which Next.js fills with the
-connection address when the request brings none (`lib/api/client-ip.ts`). metis-api trusts that header only from the
-addresses in its `ForwardedHeaders:KnownProxies` (this server). **If Next.js is exposed directly, without a proxy in
-front that overwrites `X-Forwarded-For`, a client can forge the header and choose its own rate-limit bucket. Review
-this when the deployment is defined** (put a reverse proxy in front that sets the header, or read the address from the
-platform's own trusted header).
+**Client IP forwarded to metis-api.** metis-api rate-limits its public endpoints (`/api/public/*`, used by `/unirse`
+and `/rendir`) per client IP, and every request reaches it from this server. So `apiRequest()`, the `/api/*` proxy and
+the `/rendir/<token>/sesion/*` route handlers tell it who the client is with `upstreamClientHeaders()`
+(`lib/api/client-ip.ts`), always built on the server, never copied from the browser:
+
+- **The client IP** is `x-nf-client-connection-ip` when present: Netlify's edge writes it with the address of the
+  connection it received, over anything the client sent, and it is the only client IP header Netlify guarantees. Netlify
+  passes the client's own `x-forwarded-for` through, so that one is not used there. Otherwise (local development) it is
+  `x-forwarded-for`, which Next.js fills with the socket address when the request brings none.
+- **With `METIS_PROXY_SECRET`** (server-only, validated in `lib/env.ts`, required in production): the IP goes in
+  `X-Metis-Client-IP` with the secret in `X-Metis-Proxy-Secret`. metis-api uses that IP only when the secret matches its
+  `ClientIp:ProxySecret` (the same value, set on Railway and Netlify); with a wrong or missing secret it falls back to the
+  connection address. A client calling metis-api directly cannot choose its bucket, because it does not know the secret.
+- **Without it** (development): the IP goes in `X-Forwarded-For`, which metis-api trusts only from loopback
+  (`ForwardedHeaders:KnownProxies`).
+- **Forgery:** behind Netlify the IP cannot be forged. If this app is ever deployed without Netlify in front, a client
+  can send `x-nf-client-connection-ip` or `x-forwarded-for` itself and choose its own rate-limit bucket: read the address
+  from that platform's trusted header instead. Never put the secret in a `NEXT_PUBLIC_` variable or in client code.
 
 **The student's access key.** A submission is reached only with its access key (metis-api never accepts the email for
 that), so it is a credential and is handled like the session token:
