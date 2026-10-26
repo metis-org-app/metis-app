@@ -49,3 +49,15 @@ export function startErrorState(status: number, problem: Problem | undefined): S
       return { message: START_MESSAGES.unexpected };
   }
 }
+
+/** Copy for metis-api errors on the teacher's review. */
+export const REVIEW_MESSAGES = {
+  notFound: 'No encontramos esta rendición. Puede que ya no exista o que no tengas acceso.',
+  inProgress: 'Esta rendición todavía está en curso. Podrás revisarla cuando el estudiante la entregue.',
+  notInProgress:
+    'Esta rendición ya no está en curso, así que no hace falta: si el estudiante necesita algo más, revisa su estado.',
+  conflict: 'La rendición cambió al mismo tiempo. Recarga la página y vuelve a intentarlo.',
+  invalid: 'Revisa el puntaje y el comentario, e inténtalo de nuevo.',
+  rateLimited: 'Hubo demasiados intentos seguidos. Espera un minuto y vuelve a intentarlo.',
+  unavailable: 'No pudimos conectar con Metis. Revisa tu conexión e inténtalo de nuevo en unos minutos.',
+} as const;

@@ -1,5 +1,6 @@
 // Server-only entry of the assignments feature ("asignaciones" in the UI): data for its pages and the student link.
 import 'server-only';
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getSessionToken } from '@/features/auth/server';
 import { ApiError, ApiUnavailableError } from '@/lib/api/server';
@@ -52,4 +53,26 @@ export async function lookUpShareToken(rawToken: string): Promise<ShareTokenLook
     if (error instanceof ApiError && error.status === 429) return { status: 'rate-limited' };
     throw error;
   }
+}
+
+/**
+ * Closes every assignment of an assessment that is not closed yet (archiving it offers this). Closing submits the
+ * submissions in progress with what they saved. Returns how many could not be closed; one already closed is fine.
+ */
+export async function closeOpenAssignmentsOf(assessmentId: string): Promise<number> {
+  const sessionToken = await token();
+  const open = (await assignmentsApi.list(sessionToken, { assessmentId })).filter(
+    (assignment) => assignment.availability !== 'Closed',
+  );
+  const results = await Promise.allSettled(
+    open.map((assignment) => assignmentsApi.close(sessionToken, assignment.id)),
+  );
+  open.forEach((assignment) => {
+    revalidatePath(`/asignaciones/${assignment.id}`);
+    revalidatePath(`/cursos/${assignment.workspaceId}`);
+  });
+  return results.filter(
+    (result) =>
+      result.status === 'rejected' && !(result.reason instanceof ApiError && result.reason.status === 400),
+  ).length;
 }

@@ -16,6 +16,8 @@ export const MESSAGES = {
   publishFailed:
     'No pudimos publicarla. Revisa que tenga al menos una pregunta y recarga la página: puede que ya esté publicada.',
   alreadyArchived: 'Esta evaluación ya estaba archivada.',
+  archivedButNotClosed:
+    'Archivamos la evaluación, pero no pudimos cerrar todas sus asignaciones. Ciérralas desde la página de cada una.',
   deleteNotDraft: 'Solo se pueden eliminar borradores. Una evaluación publicada se archiva.',
   draftInvalid: 'Alguna pregunta del borrador no cumple el formato. Quítala o vuelve a generar el borrador.',
 } as const;

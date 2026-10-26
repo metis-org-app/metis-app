@@ -74,17 +74,43 @@ export async function createAssignmentAction(
   redirect(`/asignaciones/${id}`);
 }
 
-/** "Guardar cambios" of the configuration. `currentDueAt` may stay even if it already passed. */
+/**
+ * "Guardar cambios" of the configuration. The current close date may stay even if it already passed. With
+ * submissions, only the close date changes: the other fields are sent exactly as metis-api has them (the form shows
+ * them disabled), and the close date can only be extended.
+ */
 export async function updateAssignmentAction(
   id: string,
-  currentDueAt: string | null,
   _previous: AssignmentFormState,
   formData: FormData,
 ): Promise<AssignmentFormState> {
   const values = readAssignmentForm(formData);
   if (!validId(id)) return { values, message: MESSAGES.notFound };
+
+  let current;
+  try {
+    current = await assignmentsApi.get(await token(), id);
+  } catch (error) {
+    return { values, message: messageFor(error) };
+  }
+  const locked = current.submissionCount > 0;
+  const effective = locked
+    ? {
+        ...values,
+        opensMode: 'at' as const,
+        opensAt: current.opensAt,
+        durationMinutes: String(current.durationMinutes),
+        assistantEnabled: current.assistantEnabled,
+        maxHelpLevel: String(current.maxHelpLevel),
+        assistantInstructions: current.assistantInstructions ?? '',
+      }
+    : values;
   // "Ahora" while editing means this moment; an omitted opensAt would keep the current one in metis-api.
-  const settings = parseSettings(values, { now: new Date(), currentDueAt });
+  const settings = parseSettings(effective, {
+    now: new Date(),
+    currentDueAt: current.dueAt,
+    extendOnly: locked,
+  });
   if (!settings.success) return { values, fieldErrors: settings.fieldErrors };
 
   try {
@@ -96,6 +122,11 @@ export async function updateAssignmentAction(
   } catch (error) {
     if (error instanceof ApiError && error.status === 400) {
       const fieldErrors = apiFieldErrors(error);
+      // A submission arrived after the page loaded: the fields it locks are now rejected.
+      if (!locked && Object.keys(fieldErrors).some((field) => field !== 'dueAt')) {
+        return { values, message: MESSAGES.locked };
+      }
+      if (locked && fieldErrors.dueAt) return { values, fieldErrors: { dueAt: [FIELD_COPY.dueExtendOnly] } };
       return Object.keys(fieldErrors).length > 0
         ? { values, fieldErrors }
         : { values, message: MESSAGES.invalid };

@@ -122,3 +122,36 @@ describe('AssignmentForm', () => {
     expect(screen.getAllByRole('radio', { name: 'En una fecha y hora' })[1]).toBeChecked();
   });
 });
+
+describe('AssignmentForm with submissions', () => {
+  it('shows the opening, the duration and Metis disabled, and explains why', () => {
+    render(
+      <AssignmentForm
+        action={async () => ({})}
+        submitLabel="Guardar cambios"
+        pendingLabel="Guardando…"
+        now={new Date('2026-09-05T15:20:00-04:00')}
+        initial={{
+          opensAt: '2026-09-05T12:00:00Z',
+          dueAt: '2026-09-08T12:00:00Z',
+          durationMinutes: 45,
+          assistantEnabled: true,
+          maxHelpLevel: 2,
+          assistantInstructions: null,
+        }}
+        submissionCount={3}
+      />,
+    );
+
+    expect(screen.getByText(/Ya hay 3 rendiciones/)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Ahora' })).toBeDisabled();
+    expect(screen.getByLabelText('Fecha y hora de apertura')).toBeDisabled();
+    expect(screen.getByLabelText('Duración en minutos')).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Metis puede ayudar en esta evaluación' })).toBeDisabled();
+    expect(screen.getByRole('radio', { name: /2\. Pistas/ })).toBeDisabled();
+    // The close date stays editable, and only moves later.
+    expect(screen.getByLabelText('Fecha y hora de cierre')).toBeEnabled();
+    expect(screen.getByRole('radio', { name: 'Sin fecha de cierre' })).toBeEnabled();
+    expect(screen.getByText('Solo una fecha posterior a la actual.')).toBeInTheDocument();
+  });
+});

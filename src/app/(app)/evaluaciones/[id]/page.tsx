@@ -69,6 +69,9 @@ export default async function AssessmentPage({ params }: PageProps<'/evaluacione
           <AssessmentActions
             assessmentId={assessment.id}
             status={assessment.status}
+            openAssignments={assignments
+              .filter((assignment) => assignment.availability !== 'Closed')
+              .map((assignment) => ({ id: assignment.id, workspaceName: assignment.workspaceName }))}
             assign={
               published && (
                 <AssignDialog

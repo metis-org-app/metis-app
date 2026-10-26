@@ -33,15 +33,23 @@ export function AssignmentSettings({ assignment }: { assignment: Assignment }) {
           </DialogTrigger>
           <DialogContent title="Editar configuración" className="max-w-xl">
             <AssignmentForm
-              action={updateAssignmentAction.bind(null, assignment.id, assignment.dueAt)}
+              action={updateAssignmentAction.bind(null, assignment.id)}
               submitLabel="Guardar cambios"
               pendingLabel="Guardando…"
               initial={assignment}
+              submissionCount={assignment.submissionCount}
               onSaved={close}
             />
           </DialogContent>
         </Dialog>
       </div>
+
+      {assignment.submissionCount > 0 && (
+        <p className="text-sm text-ink-soft">
+          Con rendiciones, solo puedes extender o quitar la fecha de cierre. La apertura, la duración y Metis
+          quedan fijos para que todo el curso rinda en las mismas condiciones.
+        </p>
+      )}
 
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
         <Setting term="Apertura">

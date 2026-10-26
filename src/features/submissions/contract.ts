@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { studentItemSchema } from '@/features/assessments';
+import { assessmentItemSchema, studentItemSchema } from '@/features/assessments';
 
 /*
  * Response shapes of metis-api for a student's submission (docs/domain-model.md › API contract › Submissions). They
@@ -97,3 +97,67 @@ export const accessKeyResponseSchema = z.strictObject({ accessKey: z.string() })
 /** Access keys and share tokens are 16 random bytes in base64url (22 characters); anything else cannot exist. */
 export const accessKeySchema = z.string().regex(/^[A-Za-z0-9_-]{22}$/);
 export const shareTokenSchema = accessKeySchema;
+
+/*
+ * The teacher's views of submissions (API contract › Submissions › instructor routes). Plain objects, not strict: the
+ * teacher may see everything, and the answer keys come in the instructor view of each item.
+ */
+
+export const ROSTER_STATUSES = ['NotStarted', 'InProgress', 'Submitted', 'Graded'] as const;
+export const rosterStatusSchema = z.enum(ROSTER_STATUSES);
+export type RosterStatus = z.infer<typeof rosterStatusSchema>;
+
+/** One student of the course with their submission of the assignment, if any. */
+export const rosterEntrySchema = z.object({
+  studentId: z.uuid(),
+  studentName: z.string(),
+  studentEmail: z.string(),
+  submissionId: z.uuid().nullable(),
+  status: rosterStatusSchema,
+  score: z.number().nullable(),
+  isScoreProvisional: z.boolean(),
+  maxScore: z.number().nullable(),
+  startedAt: dateTime.nullable(),
+  submittedAt: dateTime.nullable(),
+  deadline: dateTime.nullable(),
+  pendingReviewCount: z.number().int().nonnegative(),
+  resumeAllowed: z.boolean(),
+});
+export type RosterEntry = z.infer<typeof rosterEntrySchema>;
+
+export const itemResultSchema = z.object({
+  score: z.number().nullable(),
+  gradingStatus: gradingStatusSchema,
+  feedback: z.string().nullable(),
+  gradedAt: dateTime.nullable(),
+});
+
+export const reviewItemSchema = z.object({
+  item: assessmentItemSchema,
+  response: apiAnswerSchema.nullable(),
+  /** Null while the submission is in progress. */
+  result: itemResultSchema.nullable(),
+});
+export type ReviewItem = z.infer<typeof reviewItemSchema>;
+
+export const submissionDetailSchema = z.object({
+  id: z.uuid(),
+  assignmentId: z.uuid(),
+  assessmentTitle: z.string(),
+  student: z.object({ id: z.uuid(), name: z.string(), email: z.string() }),
+  status: submissionStatusSchema,
+  startedAt: dateTime,
+  submittedAt: dateTime.nullable(),
+  deadline: dateTime,
+  score: z.number().nullable(),
+  isScoreProvisional: z.boolean(),
+  maxScore: z.number(),
+  gradedAt: dateTime.nullable(),
+  pendingReviewCount: z.number().int().nonnegative(),
+  resumeAllowed: z.boolean(),
+  items: z.array(reviewItemSchema),
+});
+export type SubmissionDetail = z.infer<typeof submissionDetailSchema>;
+
+/** Submission ids come from the URL: only UUIDs may become part of an upstream path. */
+export const submissionIdSchema = z.uuid();
