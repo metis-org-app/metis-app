@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/cn';
 import type { StudentItem } from '../../contract';
 import { formatPoints } from '../../item-draft';
+import { countWords } from '../../words';
 
 /** The answer to one item, by type: the selected key, the selected keys, true/false, or the text. */
 export type StudentAnswer = string | string[] | boolean | null;
@@ -21,11 +22,6 @@ type StudentQuestionProps = {
 
 /** metis-api's limit for an essay answer. */
 const MAX_ESSAY_LENGTH = 20_000;
-
-/** Words separated by whitespace, counted the same way as metis-api, which enforces `maxWords` when saving. */
-export function countWords(text: string) {
-  return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
-}
 
 const pointsLabel = (points: number) => (points === 1 ? '1 punto' : `${formatPoints(points)} puntos`);
 

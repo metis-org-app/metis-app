@@ -11,6 +11,12 @@ export { createAssessmentFromDraftAction } from './actions';
 // Student mode, reused by the real submission (features/submissions).
 export { StudentAssessment } from './components/student/student-assessment';
 export { StudentPreview } from './components/student/student-preview';
-export { countWords, StudentQuestion, type StudentAnswer } from './components/student/student-question';
+export { StudentQuestion, type StudentAnswer } from './components/student/student-question';
+// Pure, so server components can count words too.
+export { countWords } from './words';
 export { studentItemSchema, type StudentItem } from './contract';
+// Instructor view of an item, reused by the review of a submission (features/submissions).
+export { assessmentItemSchema, type AssessmentItem, type ItemType } from './contract';
+export { pointsLabel } from './format';
+export { ITEM_TYPE_LABELS } from './item-draft';
 export { formatPoints } from './item-draft';

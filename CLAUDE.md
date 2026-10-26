@@ -65,6 +65,8 @@ Rules:
   Inside a feature, use relative imports.
 - `components/ui` never imports from `features`. Features may import `components/ui` and `lib`.
 - Server-only modules start with `import 'server-only'`. Never import them from a `'use client'` file.
+- A plain helper that server components also call (e.g. `countWords`, `formatPoints`) lives in a module without
+  `'use client'`: a function exported from a client module is only a reference on the server and throws when called.
 - Pages are Server Components by default. Add `'use client'` only to the leaf that needs state, effects or
   browser APIs.
 
@@ -90,6 +92,10 @@ Rules:
   batch) and blocks a manual submit. The timer uses the server clock (`serverNow` of every response); when it reaches
   0 the screen saves what is pending and submits by itself. Words are counted by splitting on whitespace, like
   metis-api (`countWords`).
+- **The teacher's review** (`features/submissions`, `RosterSection` on `/asignaciones/[id]` and
+  `/asignaciones/[id]/rendiciones/[submissionId]`) reads the roster and the detail on the server and saves each review
+  with a server action (`reviewItemAction`). Statuses, scores and pending counts come from metis-api; the front only
+  filters and picks the next pending question (`review.ts`). The roster does not update by itself ("Actualizar").
 - Errors from metis-api are RFC 9457 Problem Details: use `parseProblem` / `fieldErrorsFrom` to map them to form
   errors. Map status codes to Spanish messages in the action; never show raw API messages that may be in English.
 - `METIS_API_URL` is server-only. The browser never talks to metis-api directly and never sees the token.

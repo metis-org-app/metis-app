@@ -23,12 +23,15 @@ import { FIELD_COPY } from '../schemas';
 export function OpenCloseButton({
   assignmentId,
   availability,
+  hasSubmissions = false,
 }: {
   assignmentId: string;
   availability: Availability;
+  /** With submissions, a new close date can only extend the current one. */
+  hasSubmissions?: boolean;
 }) {
   return availability === 'Closed' ? (
-    <ReopenDialog assignmentId={assignmentId} />
+    <ReopenDialog assignmentId={assignmentId} hasSubmissions={hasSubmissions} />
   ) : (
     <CloseButton assignmentId={assignmentId} />
   );
@@ -63,7 +66,7 @@ function CloseButton({ assignmentId }: { assignmentId: string }) {
       </AlertDialogTrigger>
       <AlertDialogContent
         title="¿Cerrar la asignación ahora?"
-        description="Nadie más podrá empezar a responder. Puedes reabrirla después."
+        description="Nadie más podrá empezar a responder, y las rendiciones en curso se entregan con lo que tengan guardado. Puedes reabrirla después."
         confirmLabel="Cerrar asignación"
         pendingLabel="Cerrando…"
         destructive
@@ -76,7 +79,7 @@ function CloseButton({ assignmentId }: { assignmentId: string }) {
 }
 
 /** Reopens with the close date it had (when it is still ahead), without one, or with a new one. */
-function ReopenDialog({ assignmentId }: { assignmentId: string }) {
+function ReopenDialog({ assignmentId, hasSubmissions }: { assignmentId: string; hasSubmissions: boolean }) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const [withDate, setWithDate] = useState(false);
@@ -139,6 +142,9 @@ function ReopenDialog({ assignmentId }: { assignmentId: string }) {
             <Field
               id={`${id}-due`}
               label="Nueva fecha y hora de cierre"
+              hint={
+                hasSubmissions ? 'Ya hay rendiciones: tiene que ser posterior al cierre actual.' : undefined
+              }
               errors={fieldError ? [fieldError] : undefined}
             >
               {(control) => (

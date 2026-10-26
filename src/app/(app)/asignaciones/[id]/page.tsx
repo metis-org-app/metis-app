@@ -14,6 +14,8 @@ import {
 } from '@/features/assignments';
 import { getAssignment, studentLinkFor } from '@/features/assignments/server';
 import { requireUser } from '@/features/auth/server';
+import { RosterSection } from '@/features/submissions';
+import { getAssignmentRoster } from '@/features/submissions/server';
 
 export async function generateMetadata({ params }: PageProps<'/asignaciones/[id]'>): Promise<Metadata> {
   const assignment = await getAssignment((await params).id);
@@ -25,6 +27,7 @@ export default async function AssignmentPage({ params }: PageProps<'/asignacione
   // Another teacher's assignment is a 404 in metis-api, so it looks exactly like one that does not exist.
   const assignment = await getAssignment((await params).id);
   if (!assignment) notFound();
+  const roster = await getAssignmentRoster(assignment.id);
 
   return (
     <div className="grid gap-8">
@@ -70,7 +73,11 @@ export default async function AssignmentPage({ params }: PageProps<'/asignacione
             <DatedSentence {...availabilityDetail(assignment)} />
           </p>
         </div>
-        <OpenCloseButton assignmentId={assignment.id} availability={assignment.availability} />
+        <OpenCloseButton
+          assignmentId={assignment.id}
+          availability={assignment.availability}
+          hasSubmissions={assignment.submissionCount > 0}
+        />
       </section>
 
       <StudentLinkCard
@@ -93,6 +100,8 @@ export default async function AssignmentPage({ params }: PageProps<'/asignacione
           visible={assignment.resultsVisible}
         />
       </section>
+
+      <RosterSection assignmentId={assignment.id} roster={roster} />
 
       <AssignmentSettings assignment={assignment} />
 

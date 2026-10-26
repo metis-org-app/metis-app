@@ -57,6 +57,11 @@ type AssignmentFormProps = {
   /** Editing: the current configuration. Results visibility is not part of it (it has its own switch). */
   initial?: AssignmentFormInitial;
   onSaved?: () => void;
+  /**
+   * Editing an assignment with submissions: the opening, the duration and Metis are shown disabled (metis-api rejects
+   * changing them), and the close date can only be extended.
+   */
+  submissionCount?: number;
   /** For tests: the moment the form opens. */
   now?: Date;
 };
@@ -81,12 +86,14 @@ export function AssignmentForm({
   target,
   initial,
   onSaved,
+  submissionCount = 0,
   now: nowProp,
 }: AssignmentFormProps) {
   const [state, formAction, pending] = useActionState(action, {});
   const [now] = useState(() => nowProp ?? new Date());
   const id = useId();
   const editing = initial !== undefined;
+  const locked = editing && submissionCount > 0;
 
   const [choice, setChoice] = useState('');
   const [opensMode, setOpensMode] = useState<'now' | 'at'>(editing ? 'at' : 'now');
@@ -122,6 +129,13 @@ export function AssignmentForm({
       }}
     >
       {state.message && <Alert>{state.message}</Alert>}
+      {locked && (
+        <p className="rounded-control border border-line bg-cream-deep p-4 text-sm">
+          {submissionCount === 1 ? 'Ya hay 1 rendición' : `Ya hay ${submissionCount} rendiciones`}. Para que
+          todo el curso rinda en las mismas condiciones, la apertura, la duración y Metis quedan como están.
+          El cierre solo se puede extender o quitar.
+        </p>
+      )}
 
       {target && (
         <>
@@ -164,6 +178,7 @@ export function AssignmentForm({
         local={opensLocal}
         onLocalChange={setOpensLocal}
         errors={errors.opensAt}
+        disabled={locked}
       />
       <input type="hidden" name="opensAt" value={opensAt} />
 
@@ -183,6 +198,7 @@ export function AssignmentForm({
         onLocalChange={setDueLocal}
         errors={errors.dueAt}
         hint={dueMode === 'none' ? 'Queda abierta hasta que la cierres.' : undefined}
+        dateHint={locked ? 'Solo una fecha posterior a la actual.' : undefined}
       />
       <input type="hidden" name="dueAt" value={dueAt} />
 
@@ -204,6 +220,7 @@ export function AssignmentForm({
             value={duration}
             onChange={(event) => setDuration(event.target.value)}
             className="max-w-40"
+            disabled={locked}
             required
           />
         )}
@@ -216,76 +233,78 @@ export function AssignmentForm({
         <h3 id={`${id}-metis`} className="font-semibold">
           Metis
         </h3>
-        <SwitchRow
-          id={`${id}-assistant`}
-          name="assistantEnabled"
-          label="Metis puede ayudar en esta evaluación"
-          hint="Guía con preguntas y pistas, sin dar la respuesta."
-          checked={assistantEnabled}
-          onCheckedChange={setAssistantEnabled}
-        />
-        {assistantEnabled ? (
-          <>
-            <fieldset
-              className="grid gap-2"
-              aria-describedby={errors.maxHelpLevel ? `${id}-level-error` : undefined}
-            >
-              <legend className="mb-1 text-sm font-semibold">Cuánto puede ayudar</legend>
-              {HELP_LEVELS.map((level) => (
-                <label
-                  key={level}
-                  className={cn(
-                    'flex cursor-pointer gap-3 rounded-control border border-line p-3 transition-colors hover:bg-cream-deep',
-                    'has-checked:border-ink has-checked:bg-cream-deep has-focus-visible:ring-3 has-focus-visible:ring-gold-soft',
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="maxHelpLevel"
-                    value={level}
-                    checked={helpLevel === String(level)}
-                    onChange={() => setHelpLevel(String(level))}
-                    className="mt-1 size-4 accent-ink"
-                  />
-                  <span className="grid gap-0.5">
-                    <span className="text-sm font-semibold">
-                      {level}. {HELP_LEVEL_COPY[level].title}
+        <fieldset disabled={locked} className="grid min-w-0 gap-4 disabled:opacity-70">
+          <SwitchRow
+            id={`${id}-assistant`}
+            name="assistantEnabled"
+            label="Metis puede ayudar en esta evaluación"
+            hint="Guía con preguntas y pistas, sin dar la respuesta."
+            checked={assistantEnabled}
+            onCheckedChange={setAssistantEnabled}
+          />
+          {assistantEnabled ? (
+            <>
+              <fieldset
+                className="grid gap-2"
+                aria-describedby={errors.maxHelpLevel ? `${id}-level-error` : undefined}
+              >
+                <legend className="mb-1 text-sm font-semibold">Cuánto puede ayudar</legend>
+                {HELP_LEVELS.map((level) => (
+                  <label
+                    key={level}
+                    className={cn(
+                      'flex cursor-pointer gap-3 rounded-control border border-line p-3 transition-colors hover:bg-cream-deep',
+                      'has-checked:border-ink has-checked:bg-cream-deep has-focus-visible:ring-3 has-focus-visible:ring-gold-soft',
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="maxHelpLevel"
+                      value={level}
+                      checked={helpLevel === String(level)}
+                      onChange={() => setHelpLevel(String(level))}
+                      className="mt-1 size-4 accent-ink"
+                    />
+                    <span className="grid gap-0.5">
+                      <span className="text-sm font-semibold">
+                        {level}. {HELP_LEVEL_COPY[level].title}
+                      </span>
+                      <span className="text-sm text-ink-soft">{HELP_LEVEL_COPY[level].description}</span>
                     </span>
-                    <span className="text-sm text-ink-soft">{HELP_LEVEL_COPY[level].description}</span>
-                  </span>
-                </label>
-              ))}
-              {errors.maxHelpLevel && (
-                <p id={`${id}-level-error`} className="text-sm text-danger">
-                  {errors.maxHelpLevel.join(' ')}
-                </p>
-              )}
-            </fieldset>
-            <Field
-              id={`${id}-instructions`}
-              label="Indicaciones para Metis (opcional)"
-              hint="Por ejemplo: «No muestres ejemplos con números, solo preguntas». Los estudiantes no las ven."
-              errors={errors.assistantInstructions}
-            >
-              {(control) => (
-                <Textarea
-                  {...control}
-                  name="assistantInstructions"
-                  maxLength={INSTRUCTIONS_MAX}
-                  value={instructions}
-                  onChange={(event) => setInstructions(event.target.value)}
-                  className="min-h-24"
-                />
-              )}
-            </Field>
-          </>
-        ) : (
-          <>
-            {/* Kept while Metis is off, so turning it back on later restores them. */}
-            <input type="hidden" name="maxHelpLevel" value={helpLevel} />
-            <input type="hidden" name="assistantInstructions" value={instructions} />
-          </>
-        )}
+                  </label>
+                ))}
+                {errors.maxHelpLevel && (
+                  <p id={`${id}-level-error`} className="text-sm text-danger">
+                    {errors.maxHelpLevel.join(' ')}
+                  </p>
+                )}
+              </fieldset>
+              <Field
+                id={`${id}-instructions`}
+                label="Indicaciones para Metis (opcional)"
+                hint="Por ejemplo: «No muestres ejemplos con números, solo preguntas». Los estudiantes no las ven."
+                errors={errors.assistantInstructions}
+              >
+                {(control) => (
+                  <Textarea
+                    {...control}
+                    name="assistantInstructions"
+                    maxLength={INSTRUCTIONS_MAX}
+                    value={instructions}
+                    onChange={(event) => setInstructions(event.target.value)}
+                    className="min-h-24"
+                  />
+                )}
+              </Field>
+            </>
+          ) : (
+            <>
+              {/* Kept while Metis is off, so turning it back on later restores them. */}
+              <input type="hidden" name="maxHelpLevel" value={helpLevel} />
+              <input type="hidden" name="assistantInstructions" value={instructions} />
+            </>
+          )}
+        </fieldset>
       </section>
 
       {!editing && (
@@ -326,6 +345,8 @@ type WhenFieldsetProps = {
   onLocalChange: (value: string) => void;
   errors?: string[] | undefined;
   hint?: string | undefined;
+  dateHint?: string | undefined;
+  disabled?: boolean;
 };
 
 /** "Ahora / En una fecha y hora": two radios, and the date input when the second is chosen. */
@@ -342,9 +363,11 @@ function WhenFieldset({
   onLocalChange,
   errors,
   hint,
+  dateHint,
+  disabled = false,
 }: WhenFieldsetProps) {
   return (
-    <fieldset className="grid gap-3">
+    <fieldset className="grid gap-3 disabled:opacity-70" disabled={disabled}>
       <legend className="mb-1 text-sm font-semibold">{legend}</legend>
       <div className="flex flex-wrap gap-x-6 gap-y-2">
         {options.map((option) => (
@@ -365,7 +388,7 @@ function WhenFieldset({
         ))}
       </div>
       {mode === dateMode ? (
-        <Field id={dateId} label={dateLabel} errors={errors}>
+        <Field id={dateId} label={dateLabel} hint={dateHint} errors={errors}>
           {(control) => (
             <Input
               {...control}

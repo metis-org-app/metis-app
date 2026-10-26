@@ -32,6 +32,8 @@ export const assignmentSchema = assignmentSummarySchema.extend({
   assistantEnabled: z.boolean(),
   maxHelpLevel: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   assistantInstructions: z.string().nullable(),
+  /** Above 0 the configuration is locked, except for extending the close date. */
+  submissionCount: z.number().int().nonnegative(),
 });
 
 /** What the student link shows. `strictObject`: an id or a Metis setting showing up here is a contract break. */
