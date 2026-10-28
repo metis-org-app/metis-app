@@ -2,22 +2,28 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Alert } from '@/components/ui/alert';
 import { LoginForm } from '@/features/auth';
+import { getChallenge } from '@/features/auth/server';
 
 export const metadata: Metadata = { title: 'Ingresar' };
 
 export default async function LoginPage({ searchParams }: PageProps<'/ingresar'>) {
-  const { desde, motivo } = await searchParams;
+  const [{ desde, motivo }, pending] = await Promise.all([searchParams, getChallenge()]);
 
   return (
     <div className="grid gap-8">
       <header className="grid gap-2">
         <h1 className="font-display text-4xl font-semibold">Hola de nuevo</h1>
-        <p className="text-ink-soft">Ingresa para seguir con tus cursos y evaluaciones.</p>
+        <p className="text-ink-soft">
+          Escribe tu email y te enviamos un código para ingresar. Sin contraseñas.
+        </p>
       </header>
 
       {motivo === 'expirada' && <Alert>Tu sesión terminó. Ingresa de nuevo para continuar.</Alert>}
 
-      <LoginForm redirectTo={typeof desde === 'string' ? desde : undefined} />
+      <LoginForm
+        redirectTo={typeof desde === 'string' ? desde : undefined}
+        pendingEmail={pending?.kind === 'signIn' ? pending.email : undefined}
+      />
 
       <p className="text-sm text-ink-soft">
         ¿Primera vez en Metis?{' '}

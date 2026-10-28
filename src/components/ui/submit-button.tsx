@@ -8,9 +8,15 @@ type SubmitButtonProps = {
   children: string;
   pendingLabel: string;
   /** Only the primary action of a screen uses `primary` (the gold offset shadow). */
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'link';
   className?: string;
   size?: 'md' | 'lg';
+  /**
+   * For a form with several submit buttons: the pair is sent with the form, so the action knows which one was
+   * pressed, and only that button shows its pending label (the others are just disabled).
+   */
+  name?: string;
+  value?: string;
 };
 
 /** Submit button that shows progress and blocks double submits while the form action runs. */
@@ -20,8 +26,11 @@ export function SubmitButton({
   variant = 'primary',
   className,
   size = 'md',
+  name,
+  value,
 }: SubmitButtonProps) {
-  const { pending } = useFormStatus();
+  const { pending, data } = useFormStatus();
+  const isMine = pending && (name === undefined || data?.get(name) === value);
   return (
     <Button
       type="submit"
@@ -30,8 +39,9 @@ export function SubmitButton({
       className={className}
       disabled={pending}
       aria-disabled={pending}
+      {...(name !== undefined ? { name, value } : {})}
     >
-      {pending ? (
+      {isMine ? (
         <>
           <LoaderCircle aria-hidden className="animate-spin" />
           {pendingLabel}
