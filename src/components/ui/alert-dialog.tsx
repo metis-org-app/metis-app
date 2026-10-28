@@ -26,6 +26,8 @@ type AlertDialogContentProps = {
   /** Error from the last attempt, rendered inside the dialog. */
   error?: ReactNode;
   cancelLabel?: string;
+  /** Extra content below the description, such as an option of the action. */
+  children?: ReactNode;
 };
 
 /**
@@ -42,6 +44,7 @@ export function AlertDialogContent({
   pendingLabel,
   error,
   cancelLabel = 'Cancelar',
+  children,
 }: AlertDialogContentProps) {
   return (
     <AlertDialogPrimitive.Portal>
@@ -55,6 +58,7 @@ export function AlertDialogContent({
             {description}
           </AlertDialogPrimitive.Description>
         </div>
+        {children}
         {error}
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <AlertDialogPrimitive.Cancel

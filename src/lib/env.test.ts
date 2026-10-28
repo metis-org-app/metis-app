@@ -3,6 +3,8 @@ async function loadEnv(variables: Record<string, string>) {
   vi.resetModules();
   vi.stubEnv('METIS_API_URL', 'http://api.test');
   vi.stubEnv('APP_URL', 'http://app.test');
+  vi.stubEnv('COGNITO_REGION', 'us-east-1');
+  vi.stubEnv('COGNITO_CLIENT_ID', 'test-client');
   for (const [name, value] of Object.entries(variables)) vi.stubEnv(name, value);
   const { env } = await import('./env');
   return env;

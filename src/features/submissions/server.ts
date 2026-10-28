@@ -1,13 +1,15 @@
 // Server-only entry of the submissions feature ("rendiciones" in the UI): the student link's page and route handlers.
 import 'server-only';
+import { redirect } from 'next/navigation';
 import { NextResponse, type NextRequest } from 'next/server';
 import { lookUpShareToken, type PublicAssignment } from '@/features/assignments/server';
+import { getSessionToken } from '@/features/auth/server';
 import { upstreamClientHeaders } from '@/lib/api/client-ip';
 import { isSameOrigin } from '@/lib/api/same-origin';
 import { ApiError, ApiUnavailableError } from '@/lib/api/server';
 import { env } from '@/lib/env';
-import { publicSubmissionsApi } from './api';
-import { shareTokenSchema, type StudentResult, type StudentSubmission } from './contract';
+import { publicSubmissionsApi, submissionsApi } from './api';
+import { shareTokenSchema, submissionIdSchema, type StudentResult, type StudentSubmission } from './contract';
 import { getAccessKey, SUBMISSION_COOKIE, submissionCookiePath } from './session';
 
 export type TakePage =
@@ -117,4 +119,30 @@ export async function relaySubmissionRequest(
     response.cookies.delete({ name: SUBMISSION_COOKIE, path: submissionCookiePath(shareToken.data) });
   }
   return response;
+}
+
+// The teacher's side: the roster of an assignment and the review of a submission.
+
+export type { RosterEntry, SubmissionDetail } from './contract';
+
+async function teacherToken() {
+  const value = await getSessionToken();
+  if (!value) redirect('/salir?motivo=expirada');
+  return value;
+}
+
+/** The whole roster of the assignment's course, each student with their submission's state. */
+export async function getAssignmentRoster(assignmentId: string) {
+  return submissionsApi.roster(await teacherToken(), assignmentId);
+}
+
+/** Null when it does not exist or belongs to another teacher (both are 404), so the page shows "not found". */
+export async function getSubmissionDetail(id: string) {
+  if (!submissionIdSchema.safeParse(id).success) return null;
+  try {
+    return await submissionsApi.get(await teacherToken(), id);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
 }

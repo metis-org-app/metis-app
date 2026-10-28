@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { closeOpenAssignmentsOf } from '@/features/assignments/server';
 import { getSessionToken } from '@/features/auth/server';
 import { ApiError, ApiUnavailableError } from '@/lib/api/server';
 import { assessmentsApi } from './api';
@@ -84,10 +85,25 @@ export async function publishAssessmentAction(id: string): Promise<ActionResult>
   return run(id, (sessionToken) => assessmentsApi.publish(sessionToken, id), { 400: MESSAGES.publishFailed });
 }
 
-export async function archiveAssessmentAction(id: string): Promise<ActionResult> {
-  return run(id, (sessionToken) => assessmentsApi.archive(sessionToken, id), {
+/**
+ * Archiving does not touch the assessment's assignments; with `closeAssignments` the open ones are closed too (the
+ * confirmation offers it). The archive goes first: it is what the teacher asked for.
+ */
+export async function archiveAssessmentAction(id: string, closeAssignments = false): Promise<ActionResult> {
+  const result = await run(id, (sessionToken) => assessmentsApi.archive(sessionToken, id), {
     400: MESSAGES.alreadyArchived,
   });
+  if (!result.ok || !closeAssignments) return result;
+  try {
+    const failed = await closeOpenAssignmentsOf(id);
+    if (failed > 0) return { ok: false, message: MESSAGES.archivedButNotClosed };
+  } catch (error) {
+    if (error instanceof ApiError || error instanceof ApiUnavailableError) {
+      return { ok: false, message: MESSAGES.archivedButNotClosed };
+    }
+    throw error;
+  }
+  return result;
 }
 
 export async function deleteAssessmentAction(id: string): Promise<ActionResult> {

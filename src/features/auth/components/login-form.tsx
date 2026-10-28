@@ -2,43 +2,39 @@
 
 import { useActionState } from 'react';
 import { Alert } from '@/components/ui/alert';
-import { Field } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { PasswordInput } from '@/components/ui/password-input';
-import { loginAction } from '../actions';
+import { signInAction } from '../actions';
 import type { AuthFormState } from '../schemas';
-import { SubmitButton } from './submit-button';
+import { CodeStep } from './code-step';
+import { EmailStep } from './email-step';
 
-export function LoginForm({ redirectTo }: { redirectTo?: string | undefined }) {
-  const [state, formAction] = useActionState<AuthFormState, FormData>(loginAction, {});
+export function LoginForm({
+  redirectTo,
+  pendingEmail,
+}: {
+  redirectTo?: string | undefined;
+  pendingEmail?: string;
+}) {
+  // A reload during the code step lands on it again: the page reads the pending email from the challenge cookie.
+  const [state, formAction] = useActionState<AuthFormState, FormData>(
+    signInAction,
+    pendingEmail ? { step: 'code', values: { email: pendingEmail } } : { step: 'email' },
+  );
 
   return (
     <form action={formAction} noValidate className="grid gap-5">
       {state.message && <Alert>{state.message}</Alert>}
       {redirectTo && <input type="hidden" name="desde" value={redirectTo} />}
 
-      <Field id="email" label="Email" errors={state.fieldErrors?.email}>
-        {(control) => (
-          <Input
-            {...control}
-            name="email"
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            autoCapitalize="none"
-            spellCheck={false}
-            required
-            defaultValue={state.values?.email}
-            key={state.values?.email}
-          />
-        )}
-      </Field>
-
-      <Field id="password" label="Contraseña" errors={state.fieldErrors?.password}>
-        {(control) => <PasswordInput {...control} name="password" autoComplete="current-password" required />}
-      </Field>
-
-      <SubmitButton pendingLabel="Ingresando…">Ingresar</SubmitButton>
+      {state.step === 'code' && state.values?.email ? (
+        <CodeStep
+          email={state.values.email}
+          state={state}
+          submitLabel="Ingresar"
+          pendingLabel="Ingresando…"
+        />
+      ) : (
+        <EmailStep state={state} submitLabel="Enviarme un código" pendingLabel="Enviando código…" />
+      )}
     </form>
   );
 }

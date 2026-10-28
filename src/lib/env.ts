@@ -16,6 +16,18 @@ const schema = z
         .optional(),
     ),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    // Cognito user pool for passwordless sign-in (one-time code by email). Server-only: the browser never talks to Cognito.
+    COGNITO_REGION: z
+      .string()
+      .regex(/^[a-z]{2}-[a-z]+-\d$/, { message: 'COGNITO_REGION must be an AWS region, e.g. us-east-1' }),
+    COGNITO_CLIENT_ID: z
+      .string()
+      .min(1, { message: 'COGNITO_CLIENT_ID is the app client id of the user pool' }),
+    // Only when the app client has a secret: then every Cognito call carries SECRET_HASH. An empty value counts as unset.
+    COGNITO_CLIENT_SECRET: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.string().min(1).optional(),
+    ),
   })
   .superRefine((value, context) => {
     if (value.NODE_ENV === 'production' && !value.METIS_PROXY_SECRET) {

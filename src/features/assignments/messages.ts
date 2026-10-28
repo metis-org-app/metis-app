@@ -16,6 +16,8 @@ export const MESSAGES = {
   rateLimited: 'Hubo demasiados intentos seguidos. Espera un minuto y vuelve a intentarlo.',
   unavailable: 'No pudimos conectar con Metis. Revisa tu conexión e inténtalo de nuevo en unos minutos.',
   notOpenToReopen: 'Esta asignación ya está abierta. Recarga la página para ver su estado actual.',
+  locked:
+    'Ya hay rendiciones: la apertura, la duración y Metis no se pueden cambiar. Recarga la página para ver la configuración actual.',
 } as const;
 
 /** A 400 that names a field becomes this message next to that field. */

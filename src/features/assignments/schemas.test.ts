@@ -118,3 +118,37 @@ describe('parseTarget', () => {
     });
   });
 });
+
+describe('parseSettings with submissions (extendOnly)', () => {
+  const currentDueAt = '2026-11-05T12:00:00Z';
+  const withSubmissions = (dueAt: string | undefined, dueMode: 'at' | 'none' = 'at') => {
+    const result = parseSettings({ ...valid, dueMode, dueAt }, { now, currentDueAt, extendOnly: true });
+    return result.success ? {} : result.fieldErrors;
+  };
+
+  it('keeps the current close date when it comes back without its seconds', () => {
+    const result = parseSettings(
+      { ...valid, dueMode: 'at', dueAt: '2026-11-05T12:00:00Z' },
+      { now, currentDueAt: '2026-11-05T12:00:49Z', extendOnly: true },
+    );
+    expect(result).toMatchObject({ success: true, data: { dueAt: '2026-11-05T12:00:49Z' } });
+  });
+
+  it('accepts a later close date, the same one, or none', () => {
+    expect(withSubmissions('2026-11-06T12:00:00Z')).toEqual({});
+    expect(withSubmissions(currentDueAt)).toEqual({});
+    expect(withSubmissions(undefined, 'none')).toEqual({});
+  });
+
+  it('rejects bringing the close date forward', () => {
+    expect(withSubmissions('2026-11-04T12:00:00Z')).toEqual({ dueAt: [FIELD_COPY.dueExtendOnly] });
+  });
+
+  it('allows any future date when the current one already passed', () => {
+    const result = parseSettings(
+      { ...valid, dueMode: 'at', dueAt: '2026-11-03T12:00:00Z' },
+      { now, currentDueAt: '2026-11-01T12:00:00Z', extendOnly: true },
+    );
+    expect(result.success).toBe(true);
+  });
+});

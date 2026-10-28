@@ -20,6 +20,8 @@ export const FIELD_COPY = {
   dueAt: 'Elige la fecha y hora de cierre.',
   dueAfterOpen: 'El cierre tiene que ser después de la apertura.',
   dueInFuture: 'El cierre tiene que ser una fecha y hora futura.',
+  dueExtendOnly:
+    'Ya hay rendiciones, así que el cierre solo se puede extender: elige una fecha posterior a la actual o quita la fecha de cierre.',
   durationMinutes: `La duración va de ${DURATION_MIN} a ${DURATION_MAX} minutos, en números enteros.`,
   maxHelpLevel: 'Elige cuánto puede ayudar Metis.',
   assistantInstructions: `Las indicaciones para Metis pueden tener hasta ${INSTRUCTIONS_MAX} caracteres.`,
@@ -95,6 +97,8 @@ type SettingsOptions = {
   now: Date;
   /** When editing: the current close date, which may stay as it is even if it already passed. */
   currentDueAt?: string | null;
+  /** With submissions: a close date still ahead can only move later (removing it counts as later). */
+  extendOnly?: boolean;
 };
 
 type SettingsResult =
@@ -104,7 +108,7 @@ type SettingsResult =
 /** Validates the window, the time limit and the Metis settings. */
 export function parseSettings(
   values: AssignmentFormValues,
-  { now, currentDueAt }: SettingsOptions,
+  { now, currentDueAt, extendOnly = false }: SettingsOptions,
 ): SettingsResult {
   const errors: Partial<Record<AssignmentField, string[]>> = {};
 
@@ -120,11 +124,18 @@ export function parseSettings(
     if (!parsed.success) {
       errors.dueAt = [FIELD_COPY.dueAt];
     } else {
-      dueAt = parsed.data;
+      // The date input has no seconds: the current close date shown in it comes back to the minute. That is the
+      // same date, sent exactly as metis-api has it (a few seconds earlier would be "bringing it forward").
+      const unchanged =
+        currentDueAt != null &&
+        Math.floor(new Date(currentDueAt).getTime() / 60_000) * 60_000 === new Date(parsed.data).getTime();
+      dueAt = unchanged ? currentDueAt : parsed.data;
       const due = new Date(dueAt).getTime();
       const opens = opensAt ? new Date(opensAt).getTime() : now.getTime();
-      const unchanged = currentDueAt != null && new Date(currentDueAt).getTime() === due;
+      const currentAhead = currentDueAt != null && new Date(currentDueAt).getTime() > now.getTime();
       if (!unchanged && due <= now.getTime()) errors.dueAt = [FIELD_COPY.dueInFuture];
+      else if (extendOnly && currentAhead && due < new Date(currentDueAt).getTime())
+        errors.dueAt = [FIELD_COPY.dueExtendOnly];
       else if (!errors.opensAt && due <= opens) errors.dueAt = [FIELD_COPY.dueAfterOpen];
     }
   }
