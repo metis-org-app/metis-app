@@ -38,9 +38,11 @@ type RequestOptions<T> = {
 export async function apiRequest<T>(path: `/api/${string}`, options: RequestOptions<T>): Promise<T> {
   const { method = 'GET', body, token, schema } = options;
   const clientIp = forwardedClientIp((await headers()).get('x-forwarded-for'));
+  // Outside the try: a missing or invalid environment variable is a deployment error to surface, not "unavailable".
+  const url = new URL(path, env().METIS_API_URL);
   let response: Response;
   try {
-    response = await fetch(new URL(path, env().METIS_API_URL), {
+    response = await fetch(url, {
       method,
       cache: 'no-store',
       signal: AbortSignal.timeout(15_000),

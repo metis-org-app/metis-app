@@ -1,4 +1,5 @@
 import { CognitoIdentityProviderServiceException } from '@aws-sdk/client-cognito-identity-provider';
+import { z } from 'zod';
 import { cognitoErrorCode, secretHash } from './cognito';
 
 vi.mock('@/lib/env', () => ({
@@ -47,5 +48,10 @@ describe('cognitoErrorCode', () => {
   it('treats an unanswered request as unavailable and an unknown service error as unknown', () => {
     expect(cognitoErrorCode(new TypeError('fetch failed'))).toBe('unavailable');
     expect(cognitoErrorCode(serviceError('SomethingNewException'))).toBe('unknown');
+  });
+
+  it('surfaces a missing environment variable instead of calling it unavailable', () => {
+    const missingEnv = z.object({ COGNITO_REGION: z.string() }).safeParse({});
+    expect(cognitoErrorCode(missingEnv.error)).toBe('unknown');
   });
 });

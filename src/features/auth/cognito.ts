@@ -12,6 +12,7 @@ import {
   type InitiateAuthCommandOutput,
   type RespondToAuthChallengeCommandOutput,
 } from '@aws-sdk/client-cognito-identity-provider';
+import { ZodError } from 'zod';
 import { env } from '@/lib/env';
 
 /*
@@ -81,6 +82,8 @@ const BY_NAME: Record<string, CognitoErrorCode> = {
 
 /** Maps an SDK error to a code the flow turns into Spanish copy. Pure, so it is unit-tested. */
 export function cognitoErrorCode(error: unknown): CognitoErrorCode {
+  // A missing or invalid COGNITO_* variable (env() throws): a deployment error to surface, not "unavailable".
+  if (error instanceof ZodError) return 'unknown';
   if (error instanceof CognitoIdentityProviderServiceException) {
     if (error.name === 'InvalidParameterException' && /already confirmed/i.test(error.message)) {
       return 'alreadyConfirmed';
