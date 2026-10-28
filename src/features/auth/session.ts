@@ -4,7 +4,7 @@ import { env } from '@/lib/env';
 import { SESSION_COOKIE } from './session-cookie';
 
 /**
- * The access token lives in an httpOnly cookie: JavaScript in the browser can never read it, and
+ * The Cognito access token lives in an httpOnly cookie: JavaScript in the browser can never read it, and
  * requests to metis-api go through the Next.js server (server components, actions and /api proxy).
  */
 export async function setSession(accessToken: string, expiresInSeconds: number) {

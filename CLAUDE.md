@@ -23,7 +23,7 @@ Fonts are self-hosted with Fontsource (no requests to Google). Dependencies are 
 ```bash
 npm install            # npm 11 (see packageManager); npm 10 fails resolving vitest's optional peers
 cp .env.example .env.local
-npm run mock:api       # optional: in-memory stand-in for metis-api on :5151 (auth only)
+npm run mock:api       # optional: in-memory stand-in for metis-api on :5151 (auth sync/me only; Cognito is real)
 npm run dev            # http://localhost:3000
 npm run check          # typecheck + lint + tests + format check — must pass before every commit
 npm run build          # production build
@@ -99,17 +99,34 @@ Rules:
 - Errors from metis-api are RFC 9457 Problem Details: use `parseProblem` / `fieldErrorsFrom` to map them to form
   errors. Map status codes to Spanish messages in the action; never show raw API messages that may be in English.
 - `METIS_API_URL` is server-only. The browser never talks to metis-api directly and never sees the token.
+- `COGNITO_REGION`, `COGNITO_CLIENT_ID` and `COGNITO_CLIENT_SECRET` (server-only, validated in `lib/env.ts`) name the
+  user pool's app client; the user pool id is not needed here. The secret is a secret: `.env.local` and Netlify only.
 - `APP_URL` (server-only, validated in `lib/env.ts`) is the public origin of this app. Links rendered on the server,
   like the `/unirse/<code>` link of a course and the `/rendir/<shareToken>` link of an assignment (and its QR), are
   built from it so they work from the first render.
 
 ### Authentication
 
-- Sign-in/sign-up are server actions that call metis-api and store the access token in the **httpOnly**
-  `metis_session` cookie (`SameSite=Lax`, `Secure` in production, expires with the token).
+- Authentication is Amazon Cognito's, passwordless: the person types their email, Cognito emails a one-time code,
+  the code is pasted. Sign-in and sign-up are server actions (`features/auth/actions.ts`, two steps driven by the
+  submit button's `intent`) whose steps live in `features/auth/flow.ts`; `features/auth/cognito.ts` wraps the AWS SDK
+  (`SignUp`, `ConfirmSignUp`, `ResendConfirmationCode`, `InitiateAuth` with `USER_AUTH` + `EMAIL_OTP`,
+  `RespondToAuthChallenge`; public operations, no IAM credentials; `SECRET_HASH` when the app client has a secret).
+  The browser never talks to Cognito (the CSP keeps `connect-src 'self'`); `COGNITO_*` are server-only.
+- Between the email and the code, the pending step (email, sign-in or sign-up, Cognito's opaque `Session`) lives in
+  the httpOnly `metis_auth_challenge` cookie (15 minutes, `features/auth/challenge-cookie.ts`); the sign-in and sign-up
+  pages read it so a reload lands on the code step again.
+- Once Cognito answers with tokens, the action calls `POST /api/auth/sync` on metis-api with the **ID token** (it
+  creates the user and their personal organization the first time, idempotent) and only then stores the **access
+  token** in the **httpOnly** `metis_session` cookie (`SameSite=Lax`, `Secure` in production, expires with the token,
+  12 h; no refresh token in v1). Every other call to metis-api sends that access token.
 - `proxy.ts` does only an **optimistic** check (cookie present → allow, else redirect to `/ingresar?desde=…`).
 - The real check is the DAL: every signed-in page calls `requireUser()` (`@/features/auth/server`), which
-  validates the token with `GET /api/auth/me` (memoized per request). An invalid token redirects to `/salir`.
+  validates the token with `GET /api/auth/me` (memoized per request). An invalid or expired token redirects to
+  `/salir`, which clears both cookies.
+- Cognito errors are mapped by name in `cognitoErrorCode` and turned into Spanish copy in `flow.ts`; an unknown error
+  is thrown, not masked. Sign-in with an unknown email says so and points to sign-up (the app client does not prevent
+  user existence errors); sign-up with an existing email points to sign-in, or resumes an unconfirmed sign-up.
 - Redirect targets from the query string go through `safeRedirect()` (no open redirects).
 
 ### Security headers
@@ -205,7 +222,8 @@ Principles:
 
 1. `npm run check` passes (types, lint, tests, formatting) and `npm run build` succeeds.
 2. The flow was exercised in the browser against metis-api (or `npm run mock:api` while the endpoint does not
-   exist), including the error states, on desktop and at 390 px wide.
+   exist) and, for anything that signs in, against the development Cognito user pool, including the error states,
+   on desktop and at 390 px wide.
 3. New calls to metis-api validate their response with Zod and follow the contract in `domain-model.md`. If the
    contract needs to change, change it in metis-api first.
 4. If you used the mock, extend `scripts/mock-api.mjs` with the same contract.
@@ -213,7 +231,8 @@ Principles:
 ## Things to never do
 
 - Expose the access token to client code (no `localStorage`, no non-httpOnly cookies, no token in props).
-- Call metis-api from the browser directly, or add `NEXT_PUBLIC_` variables with backend URLs or secrets.
+- Call metis-api or Cognito from the browser directly, or add `NEXT_PUBLIC_` variables with backend URLs or secrets.
+- Store Cognito tokens anywhere but the `metis_session` cookie, or send the ID token to anything but `POST /api/auth/sync`.
 - Put business rules (grading, help levels, state transitions) in the front; metis-api decides.
 - Use raw colors or fonts outside the tokens, or the offset shadow on secondary elements.
 - Bypass `safeRedirect()` for user-provided redirect targets.

@@ -8,8 +8,10 @@ Instructions for AI coding agents (GitHub Copilot, Codex, Cursor, Claude, etc.) 
 
 - Next.js 16 App Router + TypeScript strict. Server Components by default; `'use client'` only on leaves.
 - metis-api owns data and business rules. This app follows the contract in `metis-api/docs/domain-model.md`.
-- The access token lives only in the httpOnly `metis_session` cookie. Server code calls metis-api with
-  `apiRequest()`; client code calls the `/api/*` BFF proxy on this origin. Never expose the token or the API URL.
+- Authentication is Amazon Cognito's (one-time code by email, no passwords), driven from server actions. The
+  Cognito access token lives only in the httpOnly `metis_session` cookie. Server code calls metis-api with
+  `apiRequest()`; client code calls the `/api/*` BFF proxy on this origin. Never expose the tokens, the API URL or
+  the Cognito settings, and never call metis-api or Cognito from the browser.
 - Signed-in pages call `requireUser()`; `proxy.ts` only does optimistic redirects.
 - Features are imported only through `@/features/<name>` or `@/features/<name>/server`.
 - Use the design tokens in `src/app/globals.css`. The gold offset shadow is only for a screen's primary action.

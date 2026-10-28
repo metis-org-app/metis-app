@@ -1,18 +1,26 @@
 import { z } from 'zod';
-import { loginSchema, registerSchema } from './schemas';
+import { codeSchema, emailSchema } from './schemas';
 
 describe('auth schemas', () => {
-  it('normalizes the email before sending it', () => {
-    const result = loginSchema.parse({ email: '  Profe@Colegio.CL ', password: 'x' });
+  it('normalizes the email before sending it to Cognito', () => {
+    const result = emailSchema.parse({ email: '  Profe@Colegio.CL ' });
     expect(result.email).toBe('profe@colegio.cl');
   });
 
-  it('reports every invalid register field in Spanish', () => {
-    const result = registerSchema.safeParse({ name: ' ', email: 'no-es-email', password: 'corta' });
+  it('reports an invalid email in Spanish', () => {
+    const result = emailSchema.safeParse({ email: 'no-es-email' });
     expect(result.success).toBe(false);
     const errors = result.error && z.flattenError(result.error).fieldErrors;
-    expect(errors?.name).toEqual(['Escribe tu nombre.']);
     expect(errors?.email?.[0]).toMatch(/formato del email/);
-    expect(errors?.password).toEqual(['La contraseña debe tener al menos 8 caracteres.']);
+  });
+
+  it('accepts a numeric code of 6 to 8 digits and nothing else', () => {
+    expect(codeSchema.parse({ code: ' 123456 ' }).code).toBe('123456');
+    expect(codeSchema.safeParse({ code: '12345678' }).success).toBe(true);
+    expect(codeSchema.safeParse({ code: '12 34 56' }).success).toBe(false);
+    expect(codeSchema.safeParse({ code: '12345' }).success).toBe(false);
+    const result = codeSchema.safeParse({ code: 'abcdef' });
+    const errors = result.error && z.flattenError(result.error).fieldErrors;
+    expect(errors?.code).toEqual(['Escribe el código que te enviamos, solo números.']);
   });
 });
