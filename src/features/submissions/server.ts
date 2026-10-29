@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { NextResponse, type NextRequest } from 'next/server';
 import { lookUpShareToken, type PublicAssignment } from '@/features/assignments/server';
 import { getSessionToken } from '@/features/auth/server';
-import { forwardedClientIp } from '@/lib/api/client-ip';
+import { upstreamClientHeaders } from '@/lib/api/client-ip';
 import { isSameOrigin } from '@/lib/api/same-origin';
 import { ApiError, ApiUnavailableError } from '@/lib/api/server';
 import { env } from '@/lib/env';
@@ -86,8 +86,11 @@ export async function relaySubmissionRequest(
   const contentType = request.headers.get('content-type');
   if (method === 'PUT' && contentType) headers.set('content-type', contentType);
   // metis-api rate-limits these routes per access key, and caps them per client IP.
-  const clientIp = forwardedClientIp(request.headers.get('x-forwarded-for'));
-  if (clientIp) headers.set('x-forwarded-for', clientIp);
+  for (const [name, value] of Object.entries(
+    upstreamClientHeaders(request.headers, env().METIS_PROXY_SECRET),
+  )) {
+    headers.set(name, value);
+  }
 
   let upstream: Response;
   try {

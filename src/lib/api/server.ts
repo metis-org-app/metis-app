@@ -2,7 +2,7 @@ import 'server-only';
 import { headers } from 'next/headers';
 import type { z } from 'zod';
 import { env } from '@/lib/env';
-import { forwardedClientIp } from './client-ip';
+import { upstreamClientHeaders } from './client-ip';
 import { parseProblem, type Problem } from './problem';
 
 export class ApiError extends Error {
@@ -37,7 +37,7 @@ type RequestOptions<T> = {
  */
 export async function apiRequest<T>(path: `/api/${string}`, options: RequestOptions<T>): Promise<T> {
   const { method = 'GET', body, token, schema } = options;
-  const clientIp = forwardedClientIp((await headers()).get('x-forwarded-for'));
+  const clientHeaders = upstreamClientHeaders(await headers(), env().METIS_PROXY_SECRET);
   // Outside the try: a missing or invalid environment variable is a deployment error to surface, not "unavailable".
   const url = new URL(path, env().METIS_API_URL);
   let response: Response;
@@ -51,7 +51,7 @@ export async function apiRequest<T>(path: `/api/${string}`, options: RequestOpti
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         // metis-api rate-limits public endpoints per client IP; without this every request would come from us.
-        ...(clientIp ? { 'X-Forwarded-For': clientIp } : {}),
+        ...clientHeaders,
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
