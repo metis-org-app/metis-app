@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import type { z } from 'zod';
 import { env } from '@/lib/env';
 import { upstreamClientHeaders } from './client-ip';
+import { isDevSession } from './dev-session';
 import { parseProblem, type Problem } from './problem';
 
 export class ApiError extends Error {
@@ -37,6 +38,13 @@ type RequestOptions<T> = {
  */
 export async function apiRequest<T>(path: `/api/${string}`, options: RequestOptions<T>): Promise<T> {
   const { method = 'GET', body, token, schema } = options;
+  // The development session has no metis-api behind it yet: lists come back empty and anything else behaves as
+  // "not found", so the pages render their empty states while the real API is being wired up.
+  if (isDevSession(token)) {
+    const emptyList = schema.safeParse([]);
+    if (emptyList.success) return emptyList.data;
+    throw new ApiError(404, undefined);
+  }
   const clientHeaders = upstreamClientHeaders(await headers(), env().METIS_PROXY_SECRET);
   // Outside the try: a missing or invalid environment variable is a deployment error to surface, not "unavailable".
   const url = new URL(path, env().METIS_API_URL);
