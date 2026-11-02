@@ -1,6 +1,6 @@
 'use client';
 
-import { Info, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Info, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,9 @@ import { TeacherItem } from '../teacher-item';
 // The keys metis-api will assign when the draft is saved: "a", "b", "c"... by position.
 const keyAt = (index: number) => String.fromCharCode(97 + index);
 
+// The cards enter one by one as if Metis were placing them on the table; the stagger is capped for long drafts.
+const cardDelay = (index: number) => `${Math.min(index, 12) * 130}ms`;
+
 type DraftReviewProps = {
   draft: ReviewDraft;
   saving: boolean;
@@ -23,11 +26,16 @@ type DraftReviewProps = {
   onTitleChange: (title: string) => void;
   onInstructionsChange: (instructions: string) => void;
   onRemoveItem: (key: string) => void;
+  onMoveItem: (key: string, direction: 'up' | 'down') => void;
   onRegenerate: () => void;
   onSave: () => void;
 };
 
-/** The draft Metis proposed, before anything is saved: edit the title and instructions, drop questions, then create it. */
+/**
+ * The draft Metis proposed, before anything is saved: the questions arrive as animated cards, and here the
+ * teacher moves them, drops the ones that do not fit and adjusts the title. Nothing is saved until the draft
+ * is created.
+ */
 export function DraftReview({
   draft,
   saving,
@@ -36,6 +44,7 @@ export function DraftReview({
   onTitleChange,
   onInstructionsChange,
   onRemoveItem,
+  onMoveItem,
   onRegenerate,
   onSave,
 }: DraftReviewProps) {
@@ -47,12 +56,12 @@ export function DraftReview({
   return (
     <div className="grid gap-6">
       <header className="grid gap-1.5">
-        <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold focus:outline-none">
+        <h1 ref={headingRef} tabIndex={-1} className="font-display text-3xl font-semibold focus:outline-none">
           Revisa el borrador
-        </h2>
+        </h1>
         <p className="text-ink-soft">
-          Quita las preguntas que no te sirvan y ajusta el título. Nada se guarda hasta que crees el borrador;
-          después lo sigues editando como cualquier evaluación.
+          Mueve las preguntas, quita las que no te sirvan y ajusta el título. Nada se guarda hasta que crees
+          el borrador; después lo sigues editando como cualquier evaluación.
         </p>
       </header>
 
@@ -98,17 +107,17 @@ export function DraftReview({
       </section>
 
       <section aria-labelledby="draft-items-title" className="grid gap-4">
-        <h3 id="draft-items-title" className="flex flex-wrap items-baseline gap-x-3 text-lg font-semibold">
+        <h2 id="draft-items-title" className="flex flex-wrap items-baseline gap-x-3 text-lg font-semibold">
           Preguntas
           <span className="text-sm font-normal text-ink-soft">
             {itemCountLabel(draft.items.length)} · {pointsLabel(totalPoints)}
           </span>
-        </h3>
+        </h2>
 
         {draft.items.length > 0 ? (
           <ol className="grid gap-4">
             {draft.items.map((entry, index) => (
-              <li key={entry.key}>
+              <li key={entry.key} className="animate-card-in" style={{ animationDelay: cardDelay(index) }}>
                 <TeacherItem
                   item={{
                     ...entry.item,
@@ -119,14 +128,34 @@ export function DraftReview({
                   number={index + 1}
                   headingId={entry.key}
                   action={
-                    <Button
-                      variant="ghost"
-                      aria-label={`Quitar la pregunta ${index + 1} del borrador`}
-                      onClick={() => onRemoveItem(entry.key)}
-                    >
-                      <X aria-hidden />
-                      Quitar
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Subir la pregunta ${index + 1}`}
+                        disabled={index === 0}
+                        onClick={() => onMoveItem(entry.key, 'up')}
+                      >
+                        <ArrowUp aria-hidden />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Bajar la pregunta ${index + 1}`}
+                        disabled={index === draft.items.length - 1}
+                        onClick={() => onMoveItem(entry.key, 'down')}
+                      >
+                        <ArrowDown aria-hidden />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        aria-label={`Quitar la pregunta ${index + 1} del borrador`}
+                        onClick={() => onRemoveItem(entry.key)}
+                      >
+                        <X aria-hidden />
+                        Quitar
+                      </Button>
+                    </div>
                   }
                 />
               </li>

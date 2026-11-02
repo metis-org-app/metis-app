@@ -33,7 +33,8 @@ export type GeneratorEvent =
   | { type: 'regenerate' }
   | { type: 'editTitle'; title: string }
   | { type: 'editInstructions'; instructions: string }
-  | { type: 'removeItem'; key: string };
+  | { type: 'removeItem'; key: string }
+  | { type: 'moveItem'; key: string; direction: 'up' | 'down' };
 
 export const initialState: GeneratorState = { status: 'form' };
 
@@ -80,5 +81,19 @@ export function generatorReducer(state: GeneratorState, event: GeneratorEvent): 
             draft: { ...state.draft, items: state.draft.items.filter((entry) => entry.key !== event.key) },
           }
         : state;
+
+    // Swaps with the neighbour; the first and the last cannot move further.
+    case 'moveItem': {
+      if (state.status !== 'review') return state;
+      const index = state.draft.items.findIndex((entry) => entry.key === event.key);
+      const target = event.direction === 'up' ? index - 1 : index + 1;
+      const from = state.draft.items[index];
+      const to = state.draft.items[target];
+      if (!from || !to) return state;
+      const items = [...state.draft.items];
+      items[index] = to;
+      items[target] = from;
+      return { status: 'review', draft: { ...state.draft, items } };
+    }
   }
 }

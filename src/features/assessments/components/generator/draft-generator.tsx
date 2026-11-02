@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useReducer, useRef, useState, useTransition } from 'react';
+import type { ReactNode } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { addFiles, type FileProblem } from '../../generator/files';
 import { requestDraft, GENERATE_MESSAGES, type GenerateDraft } from '../../generator/request';
@@ -24,19 +25,32 @@ type DraftGeneratorProps = {
   save: (draft: DraftToSave) => Promise<ActionResult>;
   /** Asks metis-api for the draft; replaced in tests. */
   generate?: GenerateDraft;
+  /** Page heading and introduction, shown with the start form (and hidden once the flow is running). */
+  intro?: ReactNode;
+  /** Page content below the start form (e.g. the home of /inicio), hidden once the flow is running. */
+  below?: ReactNode;
 };
 
 /**
- * "Pedirle un borrador a Metis": form → wait → review → create. The form values and the files survive an error, a
- * cancellation and "Volver a generar". The draft lives only in this component until it is created, so leaving the page
- * with a draft under review asks for confirmation.
+ * The creation flow: prompt → wait → review → create. The start screen is one prompt like an AI chat
+ * tool: materials attach to it as chips and the settings fold away; the review adds the questions as
+ * animated cards the teacher reorders or removes. The form values and the files survive an error, a
+ * cancellation and "Volver a generar". The draft lives only in this component until it is created, so
+ * leaving the page with a draft under review asks for confirmation.
  */
-export function DraftGenerator({ aiAvailable, save, generate = requestDraft }: DraftGeneratorProps) {
+export function DraftGenerator({
+  aiAvailable,
+  save,
+  generate = requestDraft,
+  intro,
+  below,
+}: DraftGeneratorProps) {
   const [state, dispatch] = useReducer(generatorReducer, initialState);
   const [values, setValues] = useState<GeneratorValues>(DEFAULT_VALUES);
   const [fieldErrors, setFieldErrors] = useState<GeneratorFieldErrors>({});
   const [files, setFiles] = useState<File[]>([]);
   const [fileProblems, setFileProblems] = useState<FileProblem[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [saveError, setSaveError] = useState<string>();
   const [titleError, setTitleError] = useState<string>();
   const [saving, startSaving] = useTransition();
@@ -46,8 +60,9 @@ export function DraftGenerator({ aiAvailable, save, generate = requestDraft }: D
   useEffect(() => () => controllerRef.current?.abort(), []);
 
   const reviewing = state.status === 'review';
+  // No warning while "Crear borrador" runs: the save's redirect to the editor is the teacher leaving on purpose.
   useEffect(() => {
-    if (!reviewing) return;
+    if (!reviewing || saving) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       // Older browsers need returnValue set to show the prompt.
@@ -55,12 +70,21 @@ export function DraftGenerator({ aiAvailable, save, generate = requestDraft }: D
     };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [reviewing]);
+  }, [reviewing, saving]);
+
+  // A field that failed validation opens its panel, so the error is never hidden inside a folded one.
+  // Materials need no panel: their errors show under the prompt, next to the chips.
+  function openPanelsFor(errors: GeneratorFieldErrors) {
+    if (errors.level || errors.itemCount || errors.allowedTypes || errors.instructions) setSettingsOpen(true);
+  }
 
   async function submit() {
     const errors = validateValues(values);
     setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) {
+      openPanelsFor(errors);
+      return;
+    }
 
     const controller = new AbortController();
     controllerRef.current = controller;
@@ -80,6 +104,7 @@ export function DraftGenerator({ aiAvailable, save, generate = requestDraft }: D
       dispatch({ type: 'cancelled' });
     } else {
       setFieldErrors(result.fieldErrors);
+      openPanelsFor(result.fieldErrors);
       dispatch({ type: 'failed', failure: result });
     }
   }
@@ -125,6 +150,7 @@ export function DraftGenerator({ aiAvailable, save, generate = requestDraft }: D
         onTitleChange={(title) => dispatch({ type: 'editTitle', title })}
         onInstructionsChange={(instructions) => dispatch({ type: 'editInstructions', instructions })}
         onRemoveItem={(key) => dispatch({ type: 'removeItem', key })}
+        onMoveItem={(key, direction) => dispatch({ type: 'moveItem', key, direction })}
         onRegenerate={() => dispatch({ type: 'regenerate' })}
         onSave={createAssessment}
       />
@@ -148,24 +174,30 @@ export function DraftGenerator({ aiAvailable, save, generate = requestDraft }: D
   );
 
   return (
-    <GeneratorForm
-      values={values}
-      fieldErrors={fieldErrors}
-      files={files}
-      fileProblems={fileProblems}
-      rejectedFileName={state.status === 'error' ? state.failure.fileName : undefined}
-      banner={banner}
-      onChange={setValues}
-      onAddFiles={(incoming) => {
-        const result = addFiles(files, incoming);
-        setFiles(result.files);
-        setFileProblems(result.problems);
-      }}
-      onRemoveFile={(file) => {
-        setFiles(files.filter((existing) => existing !== file));
-        setFileProblems([]);
-      }}
-      onSubmit={() => void submit()}
-    />
+    <div className="grid gap-8">
+      {intro}
+      <GeneratorForm
+        values={values}
+        fieldErrors={fieldErrors}
+        files={files}
+        fileProblems={fileProblems}
+        rejectedFileName={state.status === 'error' ? state.failure.fileName : undefined}
+        banner={banner}
+        settingsOpen={settingsOpen}
+        onChange={setValues}
+        onAddFiles={(incoming) => {
+          const result = addFiles(files, incoming);
+          setFiles(result.files);
+          setFileProblems(result.problems);
+        }}
+        onRemoveFile={(file) => {
+          setFiles(files.filter((existing) => existing !== file));
+          setFileProblems([]);
+        }}
+        onToggleSettings={() => setSettingsOpen((open) => !open)}
+        onSubmit={() => void submit()}
+      />
+      {below}
+    </div>
   );
 }

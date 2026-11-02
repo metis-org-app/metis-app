@@ -78,6 +78,7 @@ async function fillAndSubmit(user: ReturnType<typeof userEvent.setup>) {
 describe('DraftGenerator', () => {
   it('validates the form before sending anything', async () => {
     const { user, calls } = setup();
+    await user.click(screen.getByRole('button', { name: 'Ajustes' }));
 
     await user.click(screen.getByLabelText('Verdadero o falso'));
     await user.click(screen.getByLabelText('Selección única'));
@@ -92,6 +93,9 @@ describe('DraftGenerator', () => {
 
   it('checks the files in the browser and lets the teacher remove one', async () => {
     const { user } = setup();
+    await user.click(screen.getByRole('button', { name: 'Materiales' }));
+    // "Subir archivos" opens the browser's file window; the chosen files land in the prompt as chips.
+    await user.click(await screen.findByRole('menuitem', { name: 'Subir archivos' }));
     const input = screen.getByLabelText('Elegir archivos');
 
     await user.upload(input, [
@@ -101,7 +105,7 @@ describe('DraftGenerator', () => {
     // `accept` hides it from the picker; a dropped file still reaches the check.
     await userEvent.setup({ applyAccept: false }).upload(input, new File(['MZ'], 'programa.exe'));
 
-    const list = screen.getByRole('list', { name: 'Archivos para Metis' });
+    const list = screen.getByRole('list', { name: 'Materiales para Metis' });
     expect(within(list).getByText('guia.pdf')).toBeVisible();
     expect(within(list).getByText('apuntes.txt')).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent(
@@ -111,6 +115,19 @@ describe('DraftGenerator', () => {
     await user.click(screen.getByRole('button', { name: 'Quitar guia.pdf' }));
     expect(within(list).queryByText('guia.pdf')).not.toBeInTheDocument();
     expect(within(list).getByText('apuntes.txt')).toBeVisible();
+  });
+
+  it('adds pasted text to the prompt as a chip the teacher can remove', async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole('button', { name: 'Materiales' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Pegar texto' }));
+
+    await user.type(screen.getByLabelText('Texto para Metis'), 'La mitosis');
+    await user.click(screen.getByRole('button', { name: 'Listo' }));
+
+    expect(screen.getByRole('list', { name: 'Materiales para Metis' })).toHaveTextContent('Texto pegado');
+    await user.click(screen.getByRole('button', { name: 'Quitar el texto pegado' }));
+    expect(screen.queryByRole('list', { name: 'Materiales para Metis' })).not.toBeInTheDocument();
   });
 
   it('shows the wait, then the draft with its notices, and saves the questions the teacher kept', async () => {
@@ -174,6 +191,7 @@ describe('DraftGenerator', () => {
 
   it('returns to the same form with "Volver a generar"', async () => {
     const { user, calls } = setup();
+    await user.click(screen.getByRole('button', { name: 'Ajustes' }));
     await user.clear(screen.getByLabelText('Cantidad de preguntas'));
     await user.type(screen.getByLabelText('Cantidad de preguntas'), '5');
     await fillAndSubmit(user);
@@ -183,6 +201,22 @@ describe('DraftGenerator', () => {
 
     expect(screen.getByLabelText('Tema')).toHaveValue('La fotosíntesis');
     expect(screen.getByLabelText('Cantidad de preguntas')).toHaveValue(5);
+  });
+
+  it('moves questions and saves them in the new order', async () => {
+    const { user, calls, saved } = setup();
+    await fillAndSubmit(user);
+    calls[0]!.resolve({ ok: true, draft });
+    await screen.findByRole('heading', { name: 'Revisa el borrador' });
+
+    await user.click(screen.getByRole('button', { name: 'Bajar la pregunta 1' }));
+    expect(screen.getByRole('heading', { name: '1. La clorofila es verde.' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '2. ¿Qué gas liberan las plantas?' })).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Crear borrador' }));
+    expect(saved).toEqual([
+      { title: draft.title, instructions: draft.instructions, items: [draft.items[1], draft.items[0]] },
+    ]);
   });
 
   it('asks before leaving while a draft is under review', async () => {
