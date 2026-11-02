@@ -4,6 +4,7 @@ import type { z } from 'zod';
 import { env } from '@/lib/env';
 import { upstreamClientHeaders } from './client-ip';
 import { isDevSession } from './dev-session';
+import { devApiStub } from './dev-stubs';
 import { parseProblem, type Problem } from './problem';
 
 export class ApiError extends Error {
@@ -38,9 +39,12 @@ type RequestOptions<T> = {
  */
 export async function apiRequest<T>(path: `/api/${string}`, options: RequestOptions<T>): Promise<T> {
   const { method = 'GET', body, token, schema } = options;
-  // The development session has no metis-api behind it yet: lists come back empty and anything else behaves as
-  // "not found", so the pages render their empty states while the real API is being wired up.
+  // The development session has no metis-api behind it yet: the assessment endpoints of the creation flow answer
+  // with sample data (see ./dev-stubs), lists come back empty and anything else behaves as "not found", so the
+  // pages render while the real API is being wired up.
   if (isDevSession(token)) {
+    const stub = devApiStub(method, path, body);
+    if (stub !== undefined) return schema.parse(stub);
     const emptyList = schema.safeParse([]);
     if (emptyList.success) return emptyList.data;
     throw new ApiError(404, undefined);

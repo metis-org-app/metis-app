@@ -86,6 +86,35 @@ describe('generatorReducer', () => {
     expect(generatorReducer(initialState, { type: 'removeItem', key: firstKey })).toBe(initialState);
   });
 
+  it('moves questions and stops at the ends', () => {
+    let state = run({ type: 'submit' }, { type: 'succeeded', draft });
+    if (state.status !== 'review') throw new Error('expected a review');
+    const firstKey = state.draft.items[0]!.key;
+
+    // The first question cannot go up.
+    state = generatorReducer(state, { type: 'moveItem', key: firstKey, direction: 'up' });
+    expect(state.status === 'review' && state.draft.items.map((entry) => entry.item.prompt)).toEqual([
+      'La clorofila es verde.',
+      'Explica la fotosíntesis.',
+    ]);
+
+    // Moving it down swaps with the second; a second time it is the last and stays.
+    state = generatorReducer(state, { type: 'moveItem', key: firstKey, direction: 'down' });
+    expect(state.status === 'review' && state.draft.items.map((entry) => entry.item.prompt)).toEqual([
+      'Explica la fotosíntesis.',
+      'La clorofila es verde.',
+    ]);
+    state = generatorReducer(state, { type: 'moveItem', key: firstKey, direction: 'down' });
+    expect(state.status === 'review' && state.draft.items.map((entry) => entry.item.prompt)).toEqual([
+      'Explica la fotosíntesis.',
+      'La clorofila es verde.',
+    ]);
+
+    expect(generatorReducer(initialState, { type: 'moveItem', key: 'nope', direction: 'down' })).toBe(
+      initialState,
+    );
+  });
+
   it('returns to the form to generate again', () => {
     const review = run({ type: 'submit' }, { type: 'succeeded', draft });
     expect(generatorReducer(review, { type: 'regenerate' })).toEqual({ status: 'form' });
