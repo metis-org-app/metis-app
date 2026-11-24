@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE } from '@/features/auth/server';
 import { upstreamClientHeaders } from '@/lib/api/client-ip';
+import { devSessionToken, isDevSession } from '@/lib/api/dev-session';
+import { devGenerateDraft } from '@/lib/api/dev-stubs';
 import { isSameOrigin } from '@/lib/api/same-origin';
 import { toUpstreamPath, upstreamTimeoutMs } from '@/lib/api/upstream-path';
 import { env } from '@/lib/env';
@@ -22,6 +24,15 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
   // Server actions have built-in CSRF protection; this route needs its own for unsafe methods.
   if (!['GET', 'HEAD'].includes(request.method) && !isSameOrigin(request)) {
     return NextResponse.json({ title: 'Forbidden', status: 403 }, { status: 403 });
+  }
+
+  // In development there is always a session and no metis-api behind it (see dev-session.ts): the AI draft is
+  // answered with sample data here, so the creation flow can be tried locally without signing in.
+  const devSession = isDevSession(request.cookies.get(SESSION_COOKIE)?.value ?? devSessionToken());
+  if (devSession && request.method === 'POST' && upstreamPath === '/api/assessments/generate') {
+    return NextResponse.json(await devGenerateDraft(await request.formData()), {
+      headers: { 'cache-control': 'no-store' },
+    });
   }
 
   const url = new URL(`${upstreamPath}${request.nextUrl.search}`, env().METIS_API_URL);

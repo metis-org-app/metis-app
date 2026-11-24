@@ -72,6 +72,25 @@
   background-size: 26px 26px;
 }
 
+/*
+ * One-shot entrance for the question cards of a generated draft: the cards are added one by one
+ * as if Metis were placing them on the table (staggered with an inline animation-delay).
+ */
+@utility animate-card-in {
+  animation: card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

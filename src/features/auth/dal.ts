@@ -1,6 +1,7 @@
 import 'server-only';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
+import { isDevSession } from '@/lib/api/dev-session';
 import { ApiError } from '@/lib/api/server';
 import { authApi, type CurrentUser } from './api';
 import { getSessionToken } from './session';
@@ -13,6 +14,9 @@ import { getSessionToken } from './session';
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const token = await getSessionToken();
   if (!token) return null;
+  // The development session is not a Cognito token, so metis-api cannot know the user: this account stands in
+  // for one, and the app runs without signing in (see lib/api/dev-session.ts).
+  if (isDevSession(token)) return DEV_USER;
   try {
     return await authApi.me(token);
   } catch (error) {
@@ -20,6 +24,12 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     throw error;
   }
 });
+
+const DEV_USER: CurrentUser = {
+  id: '00000000-0000-4000-8000-000000000000',
+  name: 'Cuenta de desarrollo',
+  email: 'desarrollo@metis.local',
+};
 
 /** Returns the signed-in user or ends the request with a redirect to the sign-in page. */
 export async function requireUser(): Promise<CurrentUser> {

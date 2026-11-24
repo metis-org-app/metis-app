@@ -38,7 +38,9 @@ function contentSecurityPolicy(nonce: string) {
  */
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  const hasSession = request.cookies.has(SESSION_COOKIE);
+  // In development the app always counts as signed in: the owners work on it without logging in, so the
+  // sign-in pages redirect to the home page (see features/auth/session.ts and lib/api/dev-session.ts).
+  const hasSession = process.env.NODE_ENV === 'development' || request.cookies.has(SESSION_COOKIE);
 
   if (!hasSession && !matches(pathname, [...GUEST_ONLY, ...PUBLIC])) {
     const url = new URL('/ingresar', request.url);

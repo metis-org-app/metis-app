@@ -72,6 +72,9 @@ Rules:
 
 ### Talking to metis-api
 
+- **Check the API scope before building any UI feature.** `docs/metis-api/operations.md` is the inventory of the
+  metis-api operations (vendored from its OpenAPI spec, `docs/metis-api/openapi.json`; refresh command inside).
+  Wire only what exists there; anything missing is UI-only or future work — say so instead of inventing an endpoint.
 - **Server components and server actions** call metis-api with `apiRequest()` (`lib/api/server.ts`) through a
   feature's `api.ts`. Every response is validated with a Zod schema, so contract drift fails loudly at the edge.
 - **Client components** call `/api/<path>` on this origin (e.g. `fetch('/api/workspaces')`). The route handler

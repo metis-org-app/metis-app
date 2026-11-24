@@ -1,5 +1,6 @@
 import 'server-only';
 import { cookies } from 'next/headers';
+import { devSessionToken } from '@/lib/api/dev-session';
 import { env } from '@/lib/env';
 import { SESSION_COOKIE } from './session-cookie';
 
@@ -22,5 +23,8 @@ export async function clearSession() {
 }
 
 export async function getSessionToken() {
-  return (await cookies()).get(SESSION_COOKIE)?.value;
+  const value = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (value) return value;
+  // In development there is always a session: the owners work on the app without signing in.
+  return devSessionToken();
 }

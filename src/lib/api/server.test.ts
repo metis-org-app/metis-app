@@ -47,3 +47,44 @@ describe('apiRequest client IP headers', () => {
     expect(headers).not.toHaveProperty('X-Metis-Client-IP');
   });
 });
+
+describe('apiRequest with the development session', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  async function callDev<T>(schema: z.ZodType<T>) {
+    vi.resetModules();
+    vi.stubEnv('NODE_ENV', 'development');
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { apiRequest } = await import('./server');
+    const { DEV_SESSION_TOKEN } = await import('./dev-session');
+    return { fetchMock, call: () => apiRequest('/api/things', { token: DEV_SESSION_TOKEN, schema }) };
+  }
+
+  it('answers lists with an empty array, without calling metis-api', async () => {
+    const { fetchMock, call } = await callDev(z.array(z.object({ id: z.string() })));
+    await expect(call()).resolves.toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('answers anything else as not found, without calling metis-api', async () => {
+    const { fetchMock, call } = await callDev(z.object({ id: z.string() }));
+    await expect(call()).rejects.toMatchObject({ name: 'ApiError', status: 404 });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('calls metis-api with a real token, even in development', async () => {
+    const { fetchMock } = await callDev(z.object({ ok: z.boolean() }));
+    vi.stubEnv('METIS_API_URL', 'http://api.test');
+    vi.stubEnv('APP_URL', 'http://app.test');
+    vi.stubEnv('COGNITO_REGION', 'us-east-1');
+    vi.stubEnv('COGNITO_CLIENT_ID', 'test-client');
+    vi.stubEnv('METIS_PROXY_SECRET', '');
+    const { apiRequest } = await import('./server');
+    await apiRequest('/api/things', { token: 'a-real-cognito-token', schema: z.object({ ok: z.boolean() }) });
+    expect(fetchMock).toHaveBeenCalled();
+  });
+});
