@@ -29,13 +29,8 @@ const PROMPTS: Record<SampleType, string[]> = {
 
 function sampleItem(type: SampleType, variant: number, topic: string): Record<string, unknown> {
   const base = {
-    type,
     prompt: PROMPTS[type][variant % PROMPTS[type].length]!.replace('{t}', topic),
     points: POINTS[type],
-    options: null,
-    isTrue: null,
-    minWords: null,
-    maxWords: null,
     teacherNotes: null,
     assistantEnabled: true,
     studentHint: null,
@@ -44,33 +39,38 @@ function sampleItem(type: SampleType, variant: number, topic: string): Record<st
     case 'SingleChoice':
       return {
         ...base,
-        options: [
-          { text: 'El concepto central del tema.', isCorrect: true },
-          { text: 'Algo que no se relaciona con el tema.', isCorrect: false },
-          { text: 'Una opinión personal sin fundamentos.', isCorrect: false },
-          { text: 'Un dato que no cambia el resultado.', isCorrect: false },
-        ],
+        definition: {
+          type,
+          options: [
+            { text: 'El concepto central del tema.', isCorrect: true },
+            { text: 'Algo que no se relaciona con el tema.', isCorrect: false },
+            { text: 'Una opinión personal sin fundamentos.', isCorrect: false },
+            { text: 'Un dato que no cambia el resultado.', isCorrect: false },
+          ],
+        },
         teacherNotes: 'Busca la opción que nombra la idea principal.',
         studentHint: 'Descarta lo que no se relaciona con el tema.',
       };
     case 'MultipleChoice':
       return {
         ...base,
-        options: [
-          { text: 'El concepto principal del tema.', isCorrect: true },
-          { text: 'Un ejemplo que lo ilustra.', isCorrect: true },
-          { text: 'Algo que no se relaciona con el tema.', isCorrect: false },
-          { text: 'Una idea que contradice el tema.', isCorrect: false },
-        ],
+        definition: {
+          type,
+          options: [
+            { text: 'El concepto principal del tema.', isCorrect: true },
+            { text: 'Un ejemplo que lo ilustra.', isCorrect: true },
+            { text: 'Algo que no se relaciona con el tema.', isCorrect: false },
+            { text: 'Una idea que contradice el tema.', isCorrect: false },
+          ],
+        },
         studentHint: 'Hay dos opciones correctas.',
       };
     case 'TrueFalse':
-      return { ...base, isTrue: variant % 2 === 0 };
+      return { ...base, definition: { type, isTrue: variant % 2 === 0 } };
     case 'Essay':
       return {
         ...base,
-        minWords: 50,
-        maxWords: 150,
+        definition: { type, minWords: 50, maxWords: 150 },
         teacherNotes: 'Una buena respuesta define el tema y termina con un ejemplo.',
       };
   }
@@ -122,7 +122,10 @@ export function devApiStub(method: string, path: string, body: unknown): unknown
   return undefined;
 }
 
-/** Like the real create: the draft items get ids and positions, and the option keys are "a", "b", "c"... */
+/**
+ * Like the real create: the draft items get ids and positions, the option keys of their definition are "a", "b",
+ * "c"..., and an essay without word limits gets them as null.
+ */
 function saveAssessment(body: unknown): unknown {
   const data = (body ?? {}) as {
     title?: unknown;
@@ -132,19 +135,12 @@ function saveAssessment(body: unknown): unknown {
   };
   const rawItems: unknown[] = Array.isArray(data.items) ? data.items : [];
   const items = rawItems.map((raw, index): Record<string, unknown> => {
-    const { options, ...fields } = (raw ?? {}) as Record<string, unknown>;
-    const optionList: unknown[] = Array.isArray(options) ? options : [];
+    const { definition, ...fields } = (raw ?? {}) as Record<string, unknown>;
     return {
       id: crypto.randomUUID(),
       position: index + 1,
       ...fields,
-      options:
-        optionList.length > 0
-          ? optionList.map((option, position) => ({
-              key: String.fromCharCode(97 + position),
-              ...(option as Record<string, unknown>),
-            }))
-          : null,
+      definition: savedDefinition(definition),
     };
   });
   const totalPoints = items.reduce((sum, item) => sum + (Number(item.points) || 0), 0);
@@ -164,4 +160,22 @@ function saveAssessment(body: unknown): unknown {
   };
   store().set(assessment.id, assessment);
   return assessment;
+}
+
+/** A definition as metis-api stores it: options keyed by position, and an essay's missing word limits as null. */
+function savedDefinition(raw: unknown): unknown {
+  const definition = (raw ?? {}) as Record<string, unknown>;
+  if (Array.isArray(definition.options)) {
+    return {
+      ...definition,
+      options: definition.options.map((option, position) => ({
+        key: String.fromCharCode(97 + position),
+        ...(option as Record<string, unknown>),
+      })),
+    };
+  }
+  if (definition.type === 'Essay') {
+    return { ...definition, minWords: definition.minWords ?? null, maxWords: definition.maxWords ?? null };
+  }
+  return definition;
 }

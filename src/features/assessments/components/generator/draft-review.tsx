@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import type { ItemDefinition, ItemDefinitionRequest } from '../../contract';
 import type { ReviewDraft } from '../../generator/state';
 import { itemCountLabel, pointsLabel } from '../../format';
 import { LIMITS } from '../../item-draft';
@@ -17,6 +18,22 @@ const keyAt = (index: number) => String.fromCharCode(97 + index);
 
 // The cards enter one by one as if Metis were placing them on the table; the stagger is capped for long drafts.
 const cardDelay = (index: number) => `${Math.min(index, 12) * 130}ms`;
+
+/** A draft question's definition as the teacher view shows it: with those keys, and a missing word limit as null. */
+function asShown(definition: ItemDefinitionRequest): ItemDefinition {
+  switch (definition.type) {
+    case 'SingleChoice':
+    case 'MultipleChoice':
+      return {
+        type: definition.type,
+        options: definition.options.map((option, position) => ({ key: keyAt(position), ...option })),
+      };
+    case 'TrueFalse':
+      return definition;
+    case 'Essay':
+      return { type: 'Essay', minWords: definition.minWords ?? null, maxWords: definition.maxWords ?? null };
+  }
+}
 
 type DraftReviewProps = {
   draft: ReviewDraft;
@@ -119,12 +136,7 @@ export function DraftReview({
             {draft.items.map((entry, index) => (
               <li key={entry.key} className="animate-card-in" style={{ animationDelay: cardDelay(index) }}>
                 <TeacherItem
-                  item={{
-                    ...entry.item,
-                    options:
-                      entry.item.options?.map((option, position) => ({ key: keyAt(position), ...option })) ??
-                      null,
-                  }}
+                  item={{ ...entry.item, definition: asShown(entry.item.definition) }}
                   number={index + 1}
                   headingId={entry.key}
                   action={

@@ -130,6 +130,9 @@ export function SubmissionReview({
 
 function ReviewQuestion({ submission, entry }: { submission: SubmissionDetail; entry: ReviewItem }) {
   const { item, response, result } = entry;
+  const { definition } = item;
+  const options =
+    definition.type === 'SingleChoice' || definition.type === 'MultipleChoice' ? definition.options : null;
   const answer = fromApiAnswer(response);
   const headingId = questionAnchor(item.id);
   const pointsText = formatPoints(item.points);
@@ -146,7 +149,7 @@ function ReviewQuestion({ submission, entry }: { submission: SubmissionDetail; e
       <header className="grid gap-2">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
           <p className="text-sm text-ink-soft">
-            Pregunta {item.position} · {ITEM_TYPE_LABELS[item.type]} · {pointsLabel(item.points)}
+            Pregunta {item.position} · {ITEM_TYPE_LABELS[definition.type]} · {pointsLabel(item.points)}
           </p>
           {result && <ResultTag result={result} pointsText={pointsText} />}
         </div>
@@ -158,9 +161,9 @@ function ReviewQuestion({ submission, entry }: { submission: SubmissionDetail; e
         </h2>
       </header>
 
-      {item.options && (
+      {options && (
         <ul className="grid gap-2" aria-label="Alternativas">
-          {item.options.map((option) => {
+          {options.map((option) => {
             const chosen = Array.isArray(answer) ? answer.includes(option.key) : answer === option.key;
             return (
               <li
@@ -193,7 +196,7 @@ function ReviewQuestion({ submission, entry }: { submission: SubmissionDetail; e
         </ul>
       )}
 
-      {item.type === 'TrueFalse' && (
+      {definition.type === 'TrueFalse' && (
         <dl className="grid gap-1 sm:grid-cols-2">
           <div>
             <dt className="text-sm text-ink-soft">Su respuesta</dt>
@@ -203,20 +206,20 @@ function ReviewQuestion({ submission, entry }: { submission: SubmissionDetail; e
           </div>
           <div>
             <dt className="text-sm text-ink-soft">Respuesta correcta</dt>
-            <dd className="font-semibold text-success">{item.isTrue ? 'Verdadero' : 'Falso'}</dd>
+            <dd className="font-semibold text-success">{definition.isTrue ? 'Verdadero' : 'Falso'}</dd>
           </div>
         </dl>
       )}
 
-      {item.options && answer === null && <p className="text-ink-soft italic">Sin responder</p>}
+      {options && answer === null && <p className="text-ink-soft italic">Sin responder</p>}
 
-      {item.type === 'Essay' && (
+      {definition.type === 'Essay' && (
         <div className="grid gap-1">
           <p className="text-sm text-ink-soft">
             Su respuesta
             {typeof answer === 'string' &&
               ` · ${countWords(answer)} ${countWords(answer) === 1 ? 'palabra' : 'palabras'}`}
-            {item.maxWords && ` (máximo ${item.maxWords})`}
+            {definition.maxWords && ` (máximo ${definition.maxWords})`}
           </p>
           {typeof answer === 'string' ? (
             <p className="rounded-control border border-line bg-cream p-4 break-words whitespace-pre-wrap">
