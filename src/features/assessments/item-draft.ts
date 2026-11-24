@@ -1,4 +1,4 @@
-import type { AssessmentItem, ItemRequest, ItemType } from './contract';
+import type { AssessmentItem, ItemDefinitionRequest, ItemRequest, ItemType } from './contract';
 
 /*
  * The editor's working copy of one item. Inputs keep what the teacher typed (points and word limits as text), so a
@@ -68,18 +68,22 @@ export function emptyDraft(type: ItemType): ItemDraft {
 }
 
 export function draftFromItem(item: AssessmentItem): ItemDraft {
+  const { definition } = item;
+  const choice = definition.type === 'SingleChoice' || definition.type === 'MultipleChoice';
   return {
-    type: item.type,
+    type: definition.type,
     prompt: item.prompt,
     points: formatPoints(item.points),
-    options: (item.options ?? []).map((option) => ({
-      id: newOptionId(),
-      text: option.text,
-      isCorrect: option.isCorrect,
-    })),
-    isTrue: item.isTrue,
-    minWords: item.minWords?.toString() ?? '',
-    maxWords: item.maxWords?.toString() ?? '',
+    options: choice
+      ? definition.options.map((option) => ({
+          id: newOptionId(),
+          text: option.text,
+          isCorrect: option.isCorrect,
+        }))
+      : [],
+    isTrue: definition.type === 'TrueFalse' ? definition.isTrue : null,
+    minWords: definition.type === 'Essay' ? (definition.minWords?.toString() ?? '') : '',
+    maxWords: definition.type === 'Essay' ? (definition.maxWords?.toString() ?? '') : '',
     teacherNotes: item.teacherNotes ?? '',
     assistantEnabled: item.assistantEnabled,
     studentHint: item.studentHint ?? '',
@@ -217,30 +221,34 @@ const optional = (value: string) => (value.trim() === '' ? undefined : value.tri
 /** The API body. Only call it for a complete draft (see `missingFor`). */
 export function toRequest(draft: ItemDraft): ItemRequest {
   const request: ItemRequest = {
-    type: draft.type,
     prompt: draft.prompt.trim(),
     points: parseDecimal(draft.points),
+    definition: toDefinition(draft),
     assistantEnabled: draft.assistantEnabled,
   };
   const teacherNotes = optional(draft.teacherNotes);
   const studentHint = optional(draft.studentHint);
   if (teacherNotes) request.teacherNotes = teacherNotes;
   if (studentHint) request.studentHint = studentHint;
-
-  if (isChoice(draft.type)) {
-    request.options = draft.options.map((option) => ({
-      text: option.text.trim(),
-      isCorrect: option.isCorrect,
-    }));
-  } else if (draft.type === 'TrueFalse') {
-    request.isTrue = draft.isTrue ?? false;
-  } else {
-    const min = parseWords(draft.minWords);
-    const max = parseWords(draft.maxWords);
-    if (min !== undefined) request.minWords = min;
-    if (max !== undefined) request.maxWords = max;
-  }
   return request;
+}
+
+/** Only the fields of the draft's type: the shape of each type is all metis-api accepts. */
+function toDefinition(draft: ItemDraft): ItemDefinitionRequest {
+  if (draft.type === 'SingleChoice' || draft.type === 'MultipleChoice') {
+    return {
+      type: draft.type,
+      options: draft.options.map((option) => ({ text: option.text.trim(), isCorrect: option.isCorrect })),
+    };
+  }
+  if (draft.type === 'TrueFalse') return { type: 'TrueFalse', isTrue: draft.isTrue ?? false };
+
+  const definition: ItemDefinitionRequest = { type: 'Essay' };
+  const min = parseWords(draft.minWords);
+  const max = parseWords(draft.maxWords);
+  if (min !== undefined) definition.minWords = min;
+  if (max !== undefined) definition.maxWords = max;
+  return definition;
 }
 
 /** Points of a draft for the running total (0 while the value is not a valid number). */

@@ -11,16 +11,46 @@ export const ASSESSMENT_STATUSES = ['Draft', 'Published', 'Archived'] as const;
 export const itemTypeSchema = z.enum(ITEM_TYPES);
 export const assessmentStatusSchema = z.enum(ASSESSMENT_STATUSES);
 
+const optionSchema = z.object({ text: z.string(), isCorrect: z.boolean() });
+const keyedOptionSchema = optionSchema.extend({ key: z.string() });
+
+/**
+ * What an item asks and its answer key, as metis-api sends it to the teacher: one shape per type, told apart by `type`
+ * (docs/domain-model.md › Item types). Options carry the keys the server assigned.
+ */
+export const itemDefinitionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('SingleChoice'), options: z.array(keyedOptionSchema) }),
+  z.object({ type: z.literal('MultipleChoice'), options: z.array(keyedOptionSchema) }),
+  z.object({ type: z.literal('TrueFalse'), isTrue: z.boolean() }),
+  z.object({
+    type: z.literal('Essay'),
+    minWords: z.number().int().nullable(),
+    maxWords: z.number().int().nullable(),
+  }),
+]);
+
+/** The same shapes as they are sent to metis-api: options without keys, and an essay's word limits optional. */
+export const itemDefinitionRequestSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('SingleChoice'), options: z.array(optionSchema) }),
+  z.object({ type: z.literal('MultipleChoice'), options: z.array(optionSchema) }),
+  z.object({ type: z.literal('TrueFalse'), isTrue: z.boolean() }),
+  z.object({
+    type: z.literal('Essay'),
+    minWords: z.number().int().nullish(),
+    maxWords: z.number().int().nullish(),
+  }),
+]);
+
+/**
+ * An item as its author sees it. Only `definition` is read: the flat copies metis-api still sends next to it (`type`,
+ * `options`, `isTrue`, `minWords`, `maxWords`) are deprecated and dropped by the parse.
+ */
 export const assessmentItemSchema = z.object({
   id: z.uuid(),
   position: z.number().int().positive(),
-  type: itemTypeSchema,
   prompt: z.string(),
   points: z.number().positive(),
-  options: z.array(z.object({ key: z.string(), text: z.string(), isCorrect: z.boolean() })).nullable(),
-  isTrue: z.boolean().nullable(),
-  minWords: z.number().int().nullable(),
-  maxWords: z.number().int().nullable(),
+  definition: itemDefinitionSchema,
   teacherNotes: z.string().nullable(),
   assistantEnabled: z.boolean(),
   studentHint: z.string().nullable(),
@@ -73,21 +103,25 @@ export const studentAssessmentSchema = z.strictObject({
 });
 
 /**
- * A question of an AI draft (POST /api/assessments/generate). It has the shape of an item body, so the draft can be sent
- * as-is to POST /api/assessments; there are no ids or keys until it is saved.
+ * A question of an AI draft (POST /api/assessments/generate), with the shape of an item body, so the draft can be sent to
+ * POST /api/assessments; there are no ids or keys until it is saved. metis-api still sends draft items with the flat
+ * fields (`type`, `options`, `isTrue`, `minWords`, `maxWords`) and will send `definition` instead: both are read, and
+ * the parsed item has only `definition`, the shape this app sends.
  */
-export const draftItemSchema = z.object({
-  type: itemTypeSchema,
-  prompt: z.string(),
-  points: z.number().positive(),
-  options: z.array(z.object({ text: z.string(), isCorrect: z.boolean() })).nullable(),
-  isTrue: z.boolean().nullable(),
-  minWords: z.number().int().nullable(),
-  maxWords: z.number().int().nullable(),
-  teacherNotes: z.string().nullable(),
-  assistantEnabled: z.boolean(),
-  studentHint: z.string().nullable(),
-});
+export const draftItemSchema = z.preprocess(
+  (value) =>
+    typeof value === 'object' && value !== null && !('definition' in value)
+      ? { ...value, definition: value }
+      : value,
+  z.object({
+    prompt: z.string(),
+    points: z.number().positive(),
+    definition: itemDefinitionRequestSchema,
+    teacherNotes: z.string().nullable(),
+    assistantEnabled: z.boolean(),
+    studentHint: z.string().nullable(),
+  }),
+);
 
 /** The AI draft. Not saved: it lives in the browser until the teacher creates the assessment from it. */
 export const assessmentDraftSchema = z.object({
@@ -107,6 +141,8 @@ export const assessmentIdSchema = z.uuid();
 
 export type ItemType = z.infer<typeof itemTypeSchema>;
 export type AssessmentStatus = z.infer<typeof assessmentStatusSchema>;
+export type ItemDefinition = z.infer<typeof itemDefinitionSchema>;
+export type ItemDefinitionRequest = z.infer<typeof itemDefinitionRequestSchema>;
 export type AssessmentItem = z.infer<typeof assessmentItemSchema>;
 export type Assessment = z.infer<typeof assessmentSchema>;
 export type AssessmentSummary = z.infer<typeof assessmentSummarySchema>;
@@ -115,15 +151,11 @@ export type StudentAssessment = z.infer<typeof studentAssessmentSchema>;
 export type DraftItem = z.infer<typeof draftItemSchema>;
 export type AssessmentDraft = z.infer<typeof assessmentDraftSchema>;
 
-/** Body of POST/PUT /api/assessments/{id}/items. Fields that do not belong to the type are left out. */
+/** Body of POST/PUT /api/assessments/{id}/items: the item's type and answer go in `definition`, never in flat fields. */
 export type ItemRequest = {
-  type: ItemType;
   prompt: string;
   points: number;
-  options?: { text: string; isCorrect: boolean }[];
-  isTrue?: boolean;
-  minWords?: number;
-  maxWords?: number;
+  definition: ItemDefinitionRequest;
   teacherNotes?: string;
   assistantEnabled: boolean;
   studentHint?: string;

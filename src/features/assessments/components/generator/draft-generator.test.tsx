@@ -15,28 +15,23 @@ const draft: AssessmentDraft = {
   instructions: 'Responde las preguntas.',
   items: [
     {
-      type: 'SingleChoice',
       prompt: '¿Qué gas liberan las plantas?',
       points: 1,
-      options: [
-        { text: 'Oxígeno', isCorrect: true },
-        { text: 'Nitrógeno', isCorrect: false },
-      ],
-      isTrue: null,
-      minWords: null,
-      maxWords: null,
+      definition: {
+        type: 'SingleChoice',
+        options: [
+          { text: 'Oxígeno', isCorrect: true },
+          { text: 'Nitrógeno', isCorrect: false },
+        ],
+      },
       teacherNotes: 'Las plantas liberan oxígeno.',
       assistantEnabled: true,
       studentHint: 'Piensa en lo que respiras.',
     },
     {
-      type: 'TrueFalse',
       prompt: 'La clorofila es verde.',
       points: 1,
-      options: null,
-      isTrue: true,
-      minWords: null,
-      maxWords: null,
+      definition: { type: 'TrueFalse', isTrue: true },
       teacherNotes: null,
       assistantEnabled: true,
       studentHint: null,
