@@ -75,10 +75,9 @@ describe('changeType', () => {
     });
     expect(trueFalse.minWords).toBe('');
     expect(toRequest({ ...trueFalse, isTrue: true })).toEqual({
-      type: 'TrueFalse',
       prompt: 'Explica',
       points: 4,
-      isTrue: true,
+      definition: { type: 'TrueFalse', isTrue: true },
       teacherNotes: 'Notas',
       studentHint: 'Pista',
       assistantEnabled: true,
@@ -161,26 +160,27 @@ describe('missingFor', () => {
 });
 
 describe('toRequest', () => {
-  it('sends options without keys and only the fields of the type', () => {
+  it('sends the type and its answer in definition: options without keys, only the fields of the type', () => {
     const draft = choice('SingleChoice', [
       [' Santiago ', true],
       ['Lima', false],
     ]);
     expect(toRequest({ ...draft, points: '2,5' })).toEqual({
-      type: 'SingleChoice',
       prompt: '¿Cuáles?',
       points: 2.5,
-      options: [
-        { text: 'Santiago', isCorrect: true },
-        { text: 'Lima', isCorrect: false },
-      ],
+      definition: {
+        type: 'SingleChoice',
+        options: [
+          { text: 'Santiago', isCorrect: true },
+          { text: 'Lima', isCorrect: false },
+        ],
+      },
       assistantEnabled: true,
     });
     expect(toRequest({ ...emptyDraft('Essay'), prompt: 'p', maxWords: '200' })).toEqual({
-      type: 'Essay',
       prompt: 'p',
       points: 1,
-      maxWords: 200,
+      definition: { type: 'Essay', maxWords: 200 },
       assistantEnabled: true,
     });
   });
@@ -189,17 +189,16 @@ describe('toRequest', () => {
     const item: AssessmentItem = {
       id: '0190a000-0000-7000-8000-000000000001',
       position: 1,
-      type: 'MultipleChoice',
       prompt: '¿Cuáles?',
       points: 3.5,
-      options: [
-        { key: 'a', text: 'Chile', isCorrect: true },
-        { key: 'b', text: 'Perú', isCorrect: true },
-        { key: 'c', text: 'España', isCorrect: false },
-      ],
-      isTrue: null,
-      minWords: null,
-      maxWords: null,
+      definition: {
+        type: 'MultipleChoice',
+        options: [
+          { key: 'a', text: 'Chile', isCorrect: true },
+          { key: 'b', text: 'Perú', isCorrect: true },
+          { key: 'c', text: 'España', isCorrect: false },
+        ],
+      },
       teacherNotes: 'España está en Europa.',
       assistantEnabled: false,
       studentHint: null,
@@ -209,14 +208,16 @@ describe('toRequest', () => {
 
     expect(draft.points).toBe('3,5');
     expect(toRequest(draft)).toEqual({
-      type: 'MultipleChoice',
       prompt: '¿Cuáles?',
       points: 3.5,
-      options: [
-        { text: 'Chile', isCorrect: true },
-        { text: 'Perú', isCorrect: true },
-        { text: 'España', isCorrect: false },
-      ],
+      definition: {
+        type: 'MultipleChoice',
+        options: [
+          { text: 'Chile', isCorrect: true },
+          { text: 'Perú', isCorrect: true },
+          { text: 'España', isCorrect: false },
+        ],
+      },
       teacherNotes: 'España está en Europa.',
       assistantEnabled: false,
     });

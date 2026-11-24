@@ -23,6 +23,10 @@ export function TeacherItem({
   headingId: string;
   action?: ReactNode;
 }) {
+  const { definition } = item;
+  const options =
+    definition.type === 'SingleChoice' || definition.type === 'MultipleChoice' ? definition.options : null;
+
   return (
     <article
       aria-labelledby={headingId}
@@ -31,7 +35,7 @@ export function TeacherItem({
       <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="grid min-w-0 flex-1 gap-1">
           <p className="text-sm text-ink-soft">
-            {ITEM_TYPE_LABELS[item.type]} · {pointsLabel(item.points)}
+            {ITEM_TYPE_LABELS[definition.type]} · {pointsLabel(item.points)}
           </p>
           <h3 id={headingId} className="text-lg leading-snug font-semibold break-words whitespace-pre-wrap">
             <span className="text-ink-soft">{number}.</span> {item.prompt}
@@ -40,9 +44,9 @@ export function TeacherItem({
         {action}
       </header>
 
-      {item.options && (
+      {options && (
         <ul className="grid gap-2">
-          {item.options.map((option) => (
+          {options.map((option) => (
             <li
               key={option.key}
               className={cn(
@@ -65,21 +69,21 @@ export function TeacherItem({
         </ul>
       )}
 
-      {item.type === 'TrueFalse' && (
+      {definition.type === 'TrueFalse' && (
         <p>
           Respuesta correcta:{' '}
-          <span className="font-semibold text-success">{item.isTrue ? 'Verdadero' : 'Falso'}</span>
+          <span className="font-semibold text-success">{definition.isTrue ? 'Verdadero' : 'Falso'}</span>
         </p>
       )}
 
-      {item.type === 'Essay' && (
+      {definition.type === 'Essay' && (
         <p className="text-ink-soft">
-          {item.minWords && item.maxWords
-            ? `Entre ${item.minWords} y ${item.maxWords} palabras.`
-            : item.minWords
-              ? `Al menos ${item.minWords} palabras.`
-              : item.maxWords
-                ? `Hasta ${item.maxWords} palabras.`
+          {definition.minWords && definition.maxWords
+            ? `Entre ${definition.minWords} y ${definition.maxWords} palabras.`
+            : definition.minWords
+              ? `Al menos ${definition.minWords} palabras.`
+              : definition.maxWords
+                ? `Hasta ${definition.maxWords} palabras.`
                 : 'Sin límite de palabras.'}{' '}
           La corriges tú.
         </p>

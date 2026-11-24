@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import type { ItemDefinition, ItemDefinitionRequest } from '../../contract';
 import type { ReviewDraft } from '../../generator/state';
 import { itemCountLabel, pointsLabel } from '../../format';
 import { LIMITS } from '../../item-draft';
@@ -14,6 +15,22 @@ import { TeacherItem } from '../teacher-item';
 
 // The keys metis-api will assign when the draft is saved: "a", "b", "c"... by position.
 const keyAt = (index: number) => String.fromCharCode(97 + index);
+
+/** A draft question's definition as the teacher view shows it: with those keys, and a missing word limit as null. */
+function asShown(definition: ItemDefinitionRequest): ItemDefinition {
+  switch (definition.type) {
+    case 'SingleChoice':
+    case 'MultipleChoice':
+      return {
+        type: definition.type,
+        options: definition.options.map((option, position) => ({ key: keyAt(position), ...option })),
+      };
+    case 'TrueFalse':
+      return definition;
+    case 'Essay':
+      return { type: 'Essay', minWords: definition.minWords ?? null, maxWords: definition.maxWords ?? null };
+  }
+}
 
 type DraftReviewProps = {
   draft: ReviewDraft;
@@ -110,12 +127,7 @@ export function DraftReview({
             {draft.items.map((entry, index) => (
               <li key={entry.key}>
                 <TeacherItem
-                  item={{
-                    ...entry.item,
-                    options:
-                      entry.item.options?.map((option, position) => ({ key: keyAt(position), ...option })) ??
-                      null,
-                  }}
+                  item={{ ...entry.item, definition: asShown(entry.item.definition) }}
                   number={index + 1}
                   headingId={entry.key}
                   action={
